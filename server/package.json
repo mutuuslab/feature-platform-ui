@@ -1,0 +1,21 @@
+{
+  "name": "feature-platform-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Feature Platform Node/TS 백엔드 stub — 시트 28 API Contract + OpenAPI",
+  "scripts": {
+    "dev": "tsx watch index.ts",
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

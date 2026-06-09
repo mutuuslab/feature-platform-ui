@@ -1,0 +1,273 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* Mission-Control 팔레트 — deep navy chrome + electric cyan accent */
+  --ink-900: #07142b;
+  --ink-800: #0a1f44;
+  --ink-700: #122e5a;
+  --ink-600: #1b3e76;
+  --navy: #1f4e78;
+  --cyan-400: #22d3ee;
+  --cyan-500: #06b6d4;
+  --indigo-500: #6366f1;
+  --canvas: #eef2f8;
+  --surface: #ffffff;
+  --surface-2: #f3f6fb;
+  --border: #d8e2ee;
+  --th-text: #1e293b;
+  --fp-ink: #0a1f44;
+  --pass: #15803d;
+  --pass-soft: #dcfce7;
+  --pending: #b45309;
+  --pending-soft: #fef3c7;
+  --block: #b91c1c;
+  --block-soft: #fee2e2;
+  --rework: #475569;
+  --rework-soft: #e2e8f0;
+
+  --grad-chrome: linear-gradient(165deg, #0a1f44 0%, #0b2350 45%, #122e5a 100%);
+  --grad-cyan: linear-gradient(135deg, #0891b2 0%, #22d3ee 100%);
+  --grad-violet: linear-gradient(135deg, #4f46e5 0%, #7c83f7 100%);
+  --grad-emerald: linear-gradient(135deg, #047857 0%, #34d399 100%);
+  --grad-amber: linear-gradient(135deg, #b45309 0%, #f59e0b 100%);
+  --grad-crimson: linear-gradient(135deg, #991b1b 0%, #f43f5e 100%);
+
+  --shadow-card: 0 1px 2px rgba(10, 31, 68, 0.06), 0 8px 24px -12px rgba(10, 31, 68, 0.18);
+  --shadow-pop: 0 12px 40px -12px rgba(10, 31, 68, 0.35);
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background: var(--canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 콘텐츠 캔버스의 은은한 라디얼 텍스처 */
+.fp-canvas {
+  background-image:
+    radial-gradient(900px 500px at 100% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, rgba(99, 102, 241, 0.07), transparent 60%);
+  min-height: 100%;
+}
+
+h1, h2, h3, h4, h5,
+.fp-display {
+  font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.fp-mono {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 그라디언트 페이지 헤더 배너 */
+.fp-pagehead {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 22px 26px;
+  margin-bottom: 20px;
+  color: #fff;
+  background: var(--grad-chrome);
+  box-shadow: var(--shadow-card);
+}
+.fp-pagehead::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(420px 200px at 90% -40%, rgba(34, 211, 238, 0.35), transparent 70%),
+    radial-gradient(360px 200px at 100% 140%, rgba(99, 102, 241, 0.3), transparent 70%);
+  pointer-events: none;
+}
+.fp-pagehead .fp-ph-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 22px;
+  backdrop-filter: blur(6px);
+}
+
+/* 글라스 스탯 타일 */
+.fp-tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 18px 20px;
+  color: #fff;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.fp-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+}
+.fp-tile .fp-tile-glow {
+  position: absolute;
+  right: -30px;
+  top: -30px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(6px);
+}
+
+/* 카드 hover 리프트 */
+.fp-card-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.fp-card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-pop);
+}
+
+/* 사이드바 */
+.fp-sider {
+  background: var(--grad-chrome) !important;
+}
+.fp-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 18px;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.fp-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--grad-cyan);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.5);
+  font-weight: 700;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+/* 좌측 메뉴: 선택 항목 cyan glow */
+.fp-sider .ant-menu-dark.ant-menu-inline,
+.fp-sider .ant-menu-dark {
+  background: transparent !important;
+}
+.fp-sider .ant-menu-item {
+  border-radius: 10px !important;
+  margin: 4px 10px !important;
+  width: auto !important;
+}
+.fp-sider .ant-menu-item-selected {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.22), rgba(99, 102, 241, 0.22)) !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.45);
+}
+.fp-sider .ant-menu-item-selected::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18%;
+  height: 64%;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--cyan-400);
+  box-shadow: 0 0 10px var(--cyan-400);
+}
+
+/* 헤더 글라스 */
+.fp-header {
+  background: rgba(10, 31, 68, 0.92) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.18);
+}
+.fp-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* 상태 점 */
+.fp-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+}
+
+/* 진입 애니메이션 */
+@keyframes fpRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fp-rise { animation: fpRise 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.fp-rise-1 { animation-delay: 0.04s; }
+.fp-rise-2 { animation-delay: 0.09s; }
+.fp-rise-3 { animation-delay: 0.14s; }
+.fp-rise-4 { animation-delay: 0.19s; }
+
+@keyframes fpPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.fp-pulse { animation: fpPulse 1.8s ease-in-out infinite; }
+
+@keyframes fpDash {
+  to { stroke-dashoffset: 0; }
+}
+
+/* 커스텀 스크롤바 */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: #c3d2e4;
+  border-radius: 10px;
+  border: 2px solid var(--canvas);
+}
+*::-webkit-scrollbar-thumb:hover { background: #9fb6d1; }
+
+/* antd 카드/테이블 톤 보정 */
+.ant-card { box-shadow: var(--shadow-card); border-color: var(--border); }
+.ant-table-thead > tr > th {
+  background: var(--surface-2) !important;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 600 !important;
+  color: var(--th-text) !important;
+}
+
+/* ── 다크 모드 ── */
+body[data-theme="dark"] {
+  --canvas: #0a1424;
+  --surface: #0f1d33;
+  --surface-2: #13243f;
+  --border: #26344b;
+  --th-text: #cbd5e1;
+  --fp-ink: #e2e8f0;
+  background: var(--canvas);
+}
+body[data-theme="dark"] .fp-canvas {
+  background-image:
+    radial-gradient(900px 500px at 100% -10%, rgba(34, 211, 238, 0.1), transparent 60%),
+    radial-gradient(700px 500px at -10% 110%, rgba(99, 102, 241, 0.1), transparent 60%);
+}
+body[data-theme="dark"] .ant-card { box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5); }
+body[data-theme="dark"] .fp-tile .fp-tile-glow { background: rgba(255, 255, 255, 0.1); }
+/* 라이트에서 흰 배경 가정한 헤더/셀의 다크 보정 */
+body[data-theme="dark"] table thead th { color: var(--th-text); }
+.ant-statistic-content { font-family: "IBM Plex Mono", monospace; }
