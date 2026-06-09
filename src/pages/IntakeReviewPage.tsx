@@ -109,10 +109,25 @@ export function IntakeReviewPage() {
         {active && (
           <Space direction="vertical" size={16} style={{ width: "100%" }}>
             <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="Name">{active.name}</Descriptions.Item>
-              <Descriptions.Item label="Business Need">{active.businessNeed}</Descriptions.Item>
-              <Descriptions.Item label="Target">{active.targetRegion} / {active.targetTrim}</Descriptions.Item>
+              <Descriptions.Item label="제안명">{active.name}</Descriptions.Item>
+              {active.department && <Descriptions.Item label="제안 부서/담당자">{active.department} / {active.requester}</Descriptions.Item>}
+              <Descriptions.Item label="고객 니즈">{active.customerNeeds || active.businessNeed}{active.needsSource ? ` (${active.needsSource})` : ""}</Descriptions.Item>
+              {active.reviewBackground && <Descriptions.Item label="검토 배경">{active.reviewBackground}</Descriptions.Item>}
+              {active.devAgreement && <Descriptions.Item label="개발 협의">{active.devAgreement}</Descriptions.Item>}
+              {active.expectedValue && <Descriptions.Item label="기대효과">{active.expectedValue}</Descriptions.Item>}
+              {active.techConcept && <Descriptions.Item label="기술 컨셉">{active.techConcept}</Descriptions.Item>}
+              {active.useCase && <Descriptions.Item label="유즈케이스">{active.useCase}</Descriptions.Item>}
+              {active.competitorTrend && <Descriptions.Item label="경쟁사 동향">{active.competitorTrend}</Descriptions.Item>}
+              {active.regionScopeNote && <Descriptions.Item label="권역 협의 범위">{active.regionScopeNote}</Descriptions.Item>}
+              <Descriptions.Item label="적용 범위">
+                {active.applyScope && Object.entries(active.applyScope).some(([, b]) => b.length)
+                  ? Object.entries(active.applyScope).filter(([, b]) => b.length).map(([r, b]) => <Tag key={r}>{r}: {b.join("·")}</Tag>)
+                  : `${active.targetRegion} / ${active.targetTrim}`}
+              </Descriptions.Item>
+              {active.desiredVehicle && <Descriptions.Item label="희망 차종">{active.desiredVehicle}</Descriptions.Item>}
               <Descriptions.Item label="Deploy Type">{active.deployType}</Descriptions.Item>
+              {active.relatedDepts && active.relatedDepts.length > 0 && <Descriptions.Item label="유관 부서">{active.relatedDepts.map((d) => <Tag key={d} color="#1f4e78">{d}</Tag>)}</Descriptions.Item>}
+              <Descriptions.Item label="경영층 지시사항">{active.execDirective ? <Tag color="#b45309">Y — {active.execDirectiveNote}</Tag> : <Tag>N</Tag>}</Descriptions.Item>
             </Descriptions>
             <Alert type="success" showIcon message="Completeness Check: PASS" description="필수 항목 충족. 중복 Feature 없음 (Duplicate check: clear)." />
             <OwnerAssignmentPanel owners={owners} editable={allowed} onChange={(k: OwnerRoleKey, v) => setOwners((o) => ({ ...o, [k]: v }))} />

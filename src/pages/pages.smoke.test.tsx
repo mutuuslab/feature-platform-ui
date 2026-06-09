@@ -56,7 +56,7 @@ function Harness({ children }: { children: ReactNode }) {
 
 const PAGES: [string, () => React.JSX.Element, string][] = [
   ["Dashboard", DashboardPage, "Control Tower"],
-  ["FeatureRequest", FeatureRequestPage, "Feature Request"],
+  ["FeatureRequest", FeatureRequestPage, "Feature 신규 등록"],
   ["Intake", IntakeReviewPage, "Intake Review Board"],
   ["Registry", RegistryListPage, "Feature Registry"],
   ["Lifecycle", LifecycleDashboardPage, "Lifecycle Status Dashboard"],

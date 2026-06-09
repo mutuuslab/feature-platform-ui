@@ -82,6 +82,22 @@ export interface FeatureRequest {
   duplicateResult?: string;
   featureId?: string; // 등록 후 발급된 Feature ID
   createdAt: string;
+
+  // 제안서 상세 (3-Step 등록 위저드)
+  department?: string; // 제안 부서
+  needsSource?: string; // 고객 니즈 근거 자료 유형
+  customerNeeds?: string; // 고객 니즈
+  reviewBackground?: string; // 검토 배경
+  devAgreement?: string; // 개발 협의
+  techConcept?: string; // 기술 컨셉
+  useCase?: string; // 유즈케이스
+  competitorTrend?: string; // 경쟁사 동향
+  regionScopeNote?: string; // 권역 협의 범위
+  applyScope?: Record<string, string[]>; // 적용 범위: 권역 → 브랜드[]
+  desiredVehicle?: string; // 희망 차종
+  relatedDepts?: string[]; // 유관 부서
+  execDirective?: boolean; // 경영층 지시사항 여부
+  execDirectiveNote?: string; // 경영층 지시 내용
 }
 
 export interface Gate {
