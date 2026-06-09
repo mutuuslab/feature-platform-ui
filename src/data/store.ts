@@ -52,7 +52,8 @@ class MockStore {
   }
 
   create<T extends { id?: string }>(resource: ResourceName, item: T): T & { id: string } {
-    const withId = { ...item, id: item.id ?? genId(resource) } as T & { id: string };
+    // 빈 문자열 id("")도 미지정으로 간주하고 새 id를 발급 (?? 는 ""를 통과시키는 버그가 있었음).
+    const withId = { ...item, id: item.id || genId(resource) } as T & { id: string };
     (this.db[resource] as unknown as unknown[]).unshift(withId);
     this.persist();
     return withId;

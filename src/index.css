@@ -196,10 +196,22 @@ h1, h2, h3, h4, h5,
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px 4px 8px;
+  padding: 4px 10px 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+}
+/* 역할 셀렉터: 다크 헤더 위에서 선택값이 잘 보이도록 라이트 텍스트로 강제 */
+.fp-role-pill .ant-select-selection-item {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+.fp-role-pill .ant-select-arrow,
+.fp-role-pill .ant-select-selection-placeholder {
+  color: #cfe7f5 !important;
+}
+.fp-role-pill .ant-select:hover .ant-select-selection-item {
+  color: #7fdfef !important;
 }
 
 /* 상태 점 */

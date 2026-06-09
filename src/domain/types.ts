@@ -94,10 +94,22 @@ export interface FeatureRequest {
   competitorTrend?: string; // 경쟁사 동향
   regionScopeNote?: string; // 권역 협의 범위
   applyScope?: Record<string, string[]>; // 적용 범위: 권역 → 브랜드[]
+  applySegments?: string[]; // 적용 차급/세그먼트
+  targetSOP?: string; // 양산 적용 목표 시기 (SOP / MY)
+  businessModel?: string; // 과금 모델 (기본탑재/유상옵션/구독/FoD)
+  volumeEstimate?: string; // 예상 적용 대수 (연간)
   desiredVehicle?: string; // 희망 차종
   relatedDepts?: string[]; // 유관 부서
   execDirective?: boolean; // 경영층 지시사항 여부
   execDirectiveNote?: string; // 경영층 지시 내용
+  attachments?: AttachmentMeta[]; // 근거/첨부 자료 (Mock: 메타데이터만 저장)
+}
+
+export interface AttachmentMeta {
+  uid: string;
+  name: string;
+  size: number; // bytes
+  type?: string; // MIME
 }
 
 export interface Gate {

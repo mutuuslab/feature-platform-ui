@@ -2,8 +2,10 @@
 // 실행: npm install && npm run dev  →  http://localhost:9100  (Swagger UI: /docs)
 import express, { type Request, type Response } from "express";
 import cors from "cors";
+import Anthropic from "@anthropic-ai/sdk";
 import { buildServerDb, type ResourceName } from "./seed.js";
 import { openapi } from "./openapi.js";
+import { AI_TASKS, type AiTaskKey } from "./ai.js";
 
 const PORT = Number(process.env.PORT) || 9100; // 포트 8000 금지 규칙
 const app = express();
@@ -102,6 +104,32 @@ app.post("/api/features/:id/production-activation", (req, res) => {
   (f as { status: string }).status = "Released";
   audit({ actor: "api", action: "PRODUCTION_ACTIVATION_GO", objectType: "Feature", objectId: f.id, after: "Released" });
   res.json({ ok: true, status: "Released" });
+});
+
+// ── AI 어시스트 (실제 Claude / claude-opus-4-8) ──
+// 프런트 src/data/aiProvider.ts 가 USE_BACKEND 시 이 엔드포인트를 호출. 키 미설정 시 503.
+const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+
+app.post("/api/ai/:task", async (req: Request, res: Response) => {
+  const cfg = AI_TASKS[req.params.task as AiTaskKey];
+  if (!cfg) return res.status(404).json({ error: "unknown ai task" });
+  if (!anthropic)
+    return res.status(503).json({ error: "ANTHROPIC_API_KEY 미설정 — 백엔드 AI 비활성. 프런트는 Mock으로 동작합니다." });
+  try {
+    const msg = await anthropic.messages.create({
+      model: "claude-opus-4-8",
+      max_tokens: 2048,
+      thinking: { type: "adaptive" },
+      system: cfg.system,
+      messages: [{ role: "user", content: cfg.user(req.body ?? {}) }],
+      output_config: { format: { type: "json_schema", schema: cfg.schema } },
+    });
+    const text = msg.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "{}";
+    res.json(JSON.parse(text));
+  } catch (e) {
+    console.error("AI error", e);
+    res.status(500).json({ error: (e as Error).message });
+  }
 });
 
 // ── Generic CRUD (Refine simple-rest 호환) ──

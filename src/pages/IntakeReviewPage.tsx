@@ -2,6 +2,7 @@
 // Feature Request(3-Step 제안서)와 정합: 제안 개요·배경/기술개요/운영안·적용범위/유관부서/경영층을 섹션별로 검토.
 import { useState } from "react";
 import { Alert, Card, Descriptions, Drawer, Space, Table, Tag, message } from "antd";
+import { PaperClipOutlined } from "@ant-design/icons";
 import { store, useList, useMutate } from "../data/useStore";
 import type { Feature, FeatureRequest, Gate, OwnerRoleKey, Owners } from "../domain/types";
 import { GATES } from "../domain/codeMaster";
@@ -13,6 +14,9 @@ import { useRole } from "../auth/RoleContext";
 import { can } from "../auth/rbac";
 
 let featureSeq = 100;
+
+// 결정 불가(이미 처리됨) 상태
+const TERMINAL: FeatureRequest["status"][] = ["REGISTERED", "REJECTED", "MERGED"];
 
 // UI-003 Completeness Check — 필수/권장 항목 검증
 function completenessOf(r: FeatureRequest) {
@@ -51,6 +55,14 @@ export function IntakeReviewPage() {
 
   const decide = (decision: DecisionType, reason: string) => {
     if (!active) return;
+    if (active.status === "DRAFT") {
+      message.warning("임시저장(DRAFT) 제안서는 제출 전이라 결정할 수 없습니다. 작성자가 제출(SUBMITTED)해야 검토 가능합니다.");
+      return;
+    }
+    if (TERMINAL.includes(active.status)) {
+      message.warning("이미 처리(등록/반려/병합)된 요청입니다.");
+      return;
+    }
     if (decision === "APPROVE") {
       if (comp && !comp.pass) {
         message.error(`완성도 미충족 — 필수 누락: ${comp.missingReq.join(", ")} (UI-003). Rework 요청하세요.`);
@@ -134,6 +146,9 @@ export function IntakeReviewPage() {
       <Drawer title={active ? <span><Tag className="fp-mono" color="#1f4e78">{active.id}</Tag>{active.name}</span> : ""} width={620} open={!!active} onClose={() => setActive(null)}>
         {active && comp && (
           <Space direction="vertical" size={14} style={{ width: "100%" }}>
+            {active.status === "DRAFT" && (
+              <Alert type="warning" showIcon message="임시저장(DRAFT) 제안서입니다." description="작성자가 아직 제출하지 않았습니다. 제출(SUBMITTED) 전까지 결정할 수 없습니다." />
+            )}
             {/* UI-003 완성도 체크 */}
             <Card size="small" title="① Completeness Check (UI-003)">
               <Alert
@@ -174,10 +189,19 @@ export function IntakeReviewPage() {
             {/* 운영안 · 적용 범위 */}
             <Card size="small" title="④ 운영안 · 적용 범위">
               <Descriptions column={1} size="small" bordered>
-                {active.regionScopeNote && <Descriptions.Item label="권역 협의 범위">{active.regionScopeNote}</Descriptions.Item>}
+                {active.regionScopeNote ? <Descriptions.Item label="권역 협의 범위">{active.regionScopeNote}</Descriptions.Item> : null}
                 <Descriptions.Item label="적용 범위"><ScopeTags r={active} /></Descriptions.Item>
-                {active.desiredVehicle && <Descriptions.Item label="희망 차종">{active.desiredVehicle}</Descriptions.Item>}
-                <Descriptions.Item label="Deploy Type">{active.deployType}</Descriptions.Item>
+                {active.applySegments?.length ? <Descriptions.Item label="적용 차급">{active.applySegments.map((s) => <Tag key={s} color="#0e7490">{s}</Tag>)}</Descriptions.Item> : null}
+                <Descriptions.Item label="양산 목표 시기 (SOP)">{active.targetSOP ?? "미정"}</Descriptions.Item>
+                {active.businessModel ? <Descriptions.Item label="과금 모델 (BM)">{active.businessModel}</Descriptions.Item> : null}
+                {active.volumeEstimate ? <Descriptions.Item label="예상 적용 대수">{Number(active.volumeEstimate).toLocaleString()} 대/년</Descriptions.Item> : null}
+                {active.desiredVehicle ? <Descriptions.Item label="희망 차종">{active.desiredVehicle}</Descriptions.Item> : null}
+                <Descriptions.Item label="적용 방식">{active.deployType}</Descriptions.Item>
+                {active.attachments?.length ? (
+                  <Descriptions.Item label="근거 자료">
+                    <Space wrap size={4}>{active.attachments.map((a) => <Tag key={a.uid} icon={<PaperClipOutlined />}>{a.name}</Tag>)}</Space>
+                  </Descriptions.Item>
+                ) : null}
               </Descriptions>
             </Card>
 
@@ -198,8 +222,13 @@ export function IntakeReviewPage() {
             <Card size="small" title="⑦ Decision (LC0)">
               <DecisionPanel
                 decisions={["APPROVE", "REWORK", "REJECT", "MERGE", "BACKLOG", "ESCALATE"]}
-                disabled={!allowed || active.status === "REGISTERED"}
-                disabledReason={active.status === "REGISTERED" ? "이미 등록된 요청입니다." : !allowed ? "결정 권한이 없습니다." : !comp.pass ? "완성도 미충족 — APPROVE 시 필수 항목 누락 안내됨" : undefined}
+                disabled={!allowed || active.status === "DRAFT" || TERMINAL.includes(active.status)}
+                disabledReason={
+                  active.status === "DRAFT" ? "임시저장(DRAFT) — 작성자가 제출해야 검토·결정할 수 있습니다."
+                  : TERMINAL.includes(active.status) ? "이미 처리(등록/반려/병합)된 요청입니다."
+                  : !allowed ? "결정 권한이 없습니다."
+                  : !comp.pass ? "완성도 미충족 — APPROVE 시 필수 항목 누락 안내됨" : undefined
+                }
                 onDecide={decide}
               />
             </Card>

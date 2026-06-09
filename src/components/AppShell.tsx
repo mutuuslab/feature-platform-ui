@@ -85,7 +85,7 @@ export function AppShell() {
             <Button type="text" shape="circle" icon={dark ? <BulbOutlined style={{ color: "#fde047" }} /> : <MoonOutlined style={{ color: "#cfe0ec" }} />} onClick={toggle} style={{ marginRight: 8 }} />
           </Tooltip>
           <div className="fp-role-pill">
-            <span style={{ color: "#7fb6d6", fontSize: 12 }}>VIEW AS</span>
+            <span style={{ color: "#cfe7f5", fontSize: 12, fontWeight: 600, letterSpacing: 0.5 }}>VIEW AS</span>
             <Select
               size="small"
               variant="borderless"
