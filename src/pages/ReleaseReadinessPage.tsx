@@ -74,7 +74,7 @@ export function ReleaseReadinessPage() {
         </Col>
         <Col span={14}>
           {!feature ? (
-            <Empty />
+            <Empty description="좌측에서 Feature를 선택하면 릴리즈 준비도가 표시됩니다." />
           ) : (
             <Space direction="vertical" size={16} style={{ width: "100%" }}>
               <Card className="fp-card-lift">

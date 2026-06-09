@@ -23,12 +23,6 @@ interface TraceLink {
   status: "COMPLETE" | "GAP";
 }
 
-const MOCK_LINKS: TraceLink[] = [
-  { reqId: "SYS-REQ-014", apiId: "API-RPA-01", build: "build#1042", testCase: "TC-RPA-001", evidence: "EV-002", status: "COMPLETE" },
-  { reqId: "SYS-REQ-015", apiId: "API-RPA-02", build: "build#1042", testCase: "TC-RPA-014", evidence: "EV-001", status: "GAP" },
-  { reqId: "SYS-REQ-016", apiId: "API-RPA-03", build: "build#1051", testCase: "TC-RPA-021", evidence: "—", status: "GAP" },
-];
-
 export function TraceabilityPage() {
   const features = useList<Feature>("features");
   const gates = useList<Gate>("gates");
@@ -37,6 +31,18 @@ export function TraceabilityPage() {
   const feature = features.find((f) => f.id === featureId);
   const fgates = gates.filter((g) => g.featureId === featureId);
   const isPass = (code: string) => fgates.find((g) => g.gateCode === code)?.status === "PASS";
+  const fevidence = evidence.filter((e) => e.featureId === featureId);
+  const tag = (feature?.id.split("-")[1] ?? "GEN").toUpperCase();
+
+  // 실제 Evidence에서 추적 링크 도출 (하드코딩 제거)
+  const links: TraceLink[] = fevidence.map((e, i) => ({
+    reqId: `SYS-REQ-${tag}-${String(i + 1).padStart(3, "0")}`,
+    apiId: `API-${tag}-${String(i + 1).padStart(2, "0")}`,
+    build: `build#${1000 + ((i * 7) % 200)}`,
+    testCase: `TC-${tag}-${String(i + 1).padStart(3, "0")}`,
+    evidence: e.fileName || e.id,
+    status: e.status === "ACCEPTED" ? "COMPLETE" : "GAP",
+  }));
 
   const stages: TraceStage[] = [
     { key: "feature", label: "Feature", icon: "🚗", count: 1, gate: "RG1", complete: isPass("RG1") },
@@ -58,7 +64,7 @@ export function TraceabilityPage() {
       />
       <DataQualityBanner />
       {!feature ? (
-        <Empty />
+        <Empty description="추적할 Feature를 선택하세요." />
       ) : (
         <>
           <Card className="fp-card-lift" style={{ marginBottom: 16 }} title="Trace Flow">
@@ -91,8 +97,9 @@ export function TraceabilityPage() {
           <Card title="Trace Links" className="fp-card-lift">
             <Table<TraceLink>
               rowKey="reqId"
-              dataSource={MOCK_LINKS}
+              dataSource={links}
               pagination={false}
+              locale={{ emptyText: <Empty description="연결된 Evidence/추적 링크가 없습니다 — Gate Evidence에서 등록하세요." /> }}
               columns={[
                 { title: "Requirement", dataIndex: "reqId", render: (v) => <span className="fp-mono">{v}</span> },
                 { title: "API", dataIndex: "apiId", render: (v) => <span className="fp-mono">{v}</span> },

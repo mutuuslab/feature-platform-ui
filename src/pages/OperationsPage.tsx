@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Card, Col, Empty, Row, Select, Space } from "antd";
 import { useList } from "../data/useStore";
 import type { Feature } from "../domain/types";
+import type { FieldIssueRecord } from "../data/population";
 import { DataQualityBanner, PageHeader } from "../components/Common";
 import { StatusBadge } from "../components/StatusBadge";
 import { RadialGauge, Sparkline } from "../components/viz/Charts";
@@ -33,6 +34,31 @@ const DEFAULT_KPIS: Kpi[] = [
   { name: "Rollback Triggered", value: 0, unit: "", warning: 1, critical: 3, higherIsBetter: false, trend: [0, 0, 0] },
 ];
 
+// Feature id 해시 → 결정적 KPI (모든 Released Feature가 그럴듯한 값을 갖도록; 0 나열 제거).
+function hashId(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function trendTo(end: number, start: number, dec = 0): number[] {
+  return Array.from({ length: 6 }, (_, i) => {
+    const v = start + ((end - start) * i) / 5;
+    return dec ? +v.toFixed(dec) : Math.round(v);
+  });
+}
+function kpisFor(id: string, openIssues: number): Kpi[] {
+  const h = hashId(id);
+  const act = 80 + (h % 18); // 80~97
+  const fail = +(0.4 + (h % 30) / 15).toFixed(1); // 0.4~2.4
+  const rollback = h % 7 === 0 ? 1 : 0;
+  return [
+    { name: "Activation Rate", value: act, unit: "%", warning: 80, critical: 70, higherIsBetter: true, trend: trendTo(act, Math.max(60, act - 14)) },
+    { name: "Failure Rate", value: fail, unit: "%", warning: 2, critical: 5, higherIsBetter: false, trend: trendTo(fail, fail + 1.6, 1) },
+    { name: "Field Issues (7d)", value: openIssues, unit: "", warning: 10, critical: 25, higherIsBetter: false, trend: trendTo(openIssues, openIssues + 8) },
+    { name: "Rollback Triggered", value: rollback, unit: "", warning: 1, critical: 3, higherIsBetter: false, trend: [0, rollback, 0, 0, 0, rollback] },
+  ];
+}
+
 function kpiStatus(k: Kpi): "PASS" | "PENDING" | "BLOCK" {
   const breach = (limit: number) => (k.higherIsBetter ? k.value < limit : k.value > limit);
   if (breach(k.critical)) return "BLOCK";
@@ -43,8 +69,10 @@ const COLOR = { PASS: "#15803d", PENDING: "#b45309", BLOCK: "#b91c1c" } as const
 
 export function OperationsPage() {
   const released = useList<Feature>("features").filter((f) => f.status === "Released");
+  const fieldIssues = useList<FieldIssueRecord>("fieldIssues");
   const [featureId, setFeatureId] = useState<string | undefined>(released[0]?.id);
-  const kpis = (featureId && KPI_BY_FEATURE[featureId]) || DEFAULT_KPIS;
+  const openIssues = fieldIssues.filter((i) => i.featureId === featureId && i.status === "OPEN").length;
+  const kpis = !featureId ? DEFAULT_KPIS : KPI_BY_FEATURE[featureId] ?? kpisFor(featureId, openIssues);
   const activation = kpis.find((k) => k.name === "Activation Rate")?.value ?? 0;
 
   return (

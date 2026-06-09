@@ -1,9 +1,12 @@
 // 시트 59 Go-live Decision Framework — Pilot/MVP → 운영 전환 GO/HOLD/BLOCK 판단.
+// 영역 상태는 실제 store 집계(features·gates·supplier·release·fieldIssues)로 동적 계산.
 import { Card, Col, Row, Space, Tag, Tooltip } from "antd";
 import { DataQualityBanner, PageHeader } from "../components/Common";
 import { DecisionBadge } from "../components/StatusBadge";
 import { RadialGauge } from "../components/viz/Charts";
-import type { ProductionDecision } from "../domain/types";
+import { useList } from "../data/useStore";
+import type { Feature, Gate, ProductionDecision, ReleasePlan, SupplierWorkPackage } from "../domain/types";
+import type { FieldIssueRecord } from "../data/population";
 
 type AreaStatus = "GO" | "HOLD" | "BLOCK";
 
@@ -19,22 +22,61 @@ interface DecisionArea {
   escalation: string;
 }
 
-const AREAS: DecisionArea[] = [
-  { area: "LC0 / Registry", icon: "🗂", status: "GO", go: "모든 pilot feature가 Request ID·Feature ID·Product Owner·lifecycle status 보유", hold: "경미한 metadata open item (due date 있음)", block: "Feature ID 또는 Product Owner 누락", evidence: "Feature Registry extract, owner assignment log", owner: "PMO", escalation: "Steering Committee" },
-  { area: "9 Gate Readiness", icon: "🚦", status: "HOLD", go: "RG1~RG9 PASS 또는 승인된 Conditional PASS", hold: "Non-critical pending item (action owner 지정)", block: "RG BLOCK 또는 미해결 critical evidence", evidence: "14_9Gate_Readiness, 03_Gate_Evidence", owner: "Release Readiness Board", escalation: "Steering Committee" },
-  { area: "Supplier Evidence", icon: "🤝", status: "GO", go: "Supplier WP·evidence review 완료", hold: "Supplier rework open (release-blocking 아님)", block: "API contract 불일치 또는 evidence 누락", evidence: "Supplier evidence audit, OEM review", owner: "SW Owner", escalation: "Purchasing / Steering" },
-  { area: "Data / Migration", icon: "🗄", status: "GO", go: "Critical 이관 데이터 reconciled·freeze", hold: "Non-critical legacy data pending", block: "Variant/eligibility mismatch 미해결", evidence: "Migration reconciliation report", owner: "PMO / Data Owner", escalation: "System Owner" },
-  { area: "Integration", icon: "🔗", status: "GO", go: "IAM/API/ALM/OTA/Telemetry MVP 경로 테스트", hold: "P1 통합 수동 시뮬레이션", block: "통합 실패로 core workflow 실행 불가", evidence: "Integration test report", owner: "Backend Owner", escalation: "IT/DevSecOps" },
-  { area: "Security / Audit", icon: "🛡", status: "GO", go: "RBAC·supplier isolation·audit logging 테스트", hold: "저위험 audit formatting open item", block: "비인가 접근 또는 승인 audit 누락", evidence: "RBAC test, audit sample", owner: "Security / PMO", escalation: "Security Board" },
-  { area: "Operations", icon: "📡", status: "HOLD", go: "Hypercare runbook·KPI·escalation·rollback 준비", hold: "교육 완료율 <100% (핵심 role은 완료)", block: "Telemetry 불가 또는 rollback 경로 미검증", evidence: "Runbook, KPI scorecard, training log", owner: "Operation Owner", escalation: "Release Owner" },
-  { area: "Executive Decision", icon: "🏛", status: "HOLD", go: "BLOCK 없음·잔여 리스크 수용", hold: "Open item을 due date와 함께 수용", block: "Critical risk 미해결 또는 owner 없음", evidence: "Consolidated readiness pack", owner: "Executive Sponsor", escalation: "Steering Committee" },
+// 기준 텍스트(스펙) — status는 런타임 계산으로 주입
+type AreaTemplate = Omit<DecisionArea, "status">;
+const AREA_TEMPLATES: AreaTemplate[] = [
+  { area: "LC0 / Registry", icon: "🗂", go: "모든 pilot feature가 Request ID·Feature ID·Product Owner·lifecycle status 보유", hold: "경미한 metadata open item (due date 있음)", block: "Feature ID 또는 Product Owner 누락", evidence: "Feature Registry extract, owner assignment log", owner: "PMO", escalation: "Steering Committee" },
+  { area: "9 Gate Readiness", icon: "🚦", go: "RG1~RG9 PASS 또는 승인된 Conditional PASS", hold: "Non-critical pending item (action owner 지정)", block: "RG BLOCK 또는 미해결 critical evidence", evidence: "14_9Gate_Readiness, 03_Gate_Evidence", owner: "Release Readiness Board", escalation: "Steering Committee" },
+  { area: "Supplier Evidence", icon: "🤝", go: "Supplier WP·evidence review 완료", hold: "Supplier rework open (release-blocking 아님)", block: "API contract 불일치 또는 evidence 누락", evidence: "Supplier evidence audit, OEM review", owner: "SW Owner", escalation: "Purchasing / Steering" },
+  { area: "Data / Migration", icon: "🗄", go: "Critical 이관 데이터 reconciled·freeze", hold: "Release 단계 feature의 release plan 미비", block: "Variant/eligibility mismatch 미해결", evidence: "Migration reconciliation report", owner: "PMO / Data Owner", escalation: "System Owner" },
+  { area: "Integration", icon: "🔗", go: "IAM/API/ALM/OTA/Telemetry MVP 경로 테스트", hold: "P1 통합 수동 시뮬레이션", block: "통합 실패로 core workflow 실행 불가", evidence: "Integration test report", owner: "Backend Owner", escalation: "IT/DevSecOps" },
+  { area: "Security / Audit", icon: "🛡", go: "RG7(Cybersecurity) PASS·RBAC·audit logging", hold: "RG7 pending/conditional", block: "RG7 BLOCK 또는 비인가 접근", evidence: "RBAC test, audit sample, RG7", owner: "Security / PMO", escalation: "Security Board" },
+  { area: "Operations", icon: "📡", go: "Open Field Issue 없음·rollback 준비", hold: "Open Field Issue 존재(High)", block: "Critical Field Issue OPEN", evidence: "Runbook, KPI scorecard, Field Issues", owner: "Operation Owner", escalation: "Release Owner" },
+  { area: "Executive Decision", icon: "🏛", go: "BLOCK 없음·잔여 리스크 수용", hold: "Open item을 due date와 함께 수용", block: "Critical risk 미해결 또는 owner 없음", evidence: "Consolidated readiness pack", owner: "Executive Sponsor", escalation: "Steering Committee" },
 ];
 
 const AREA_COLOR: Record<AreaStatus, string> = { GO: "#15803d", HOLD: "#b45309", BLOCK: "#b91c1c" };
 
+// 게이트 집합 → 영역 상태
+function gateStatus(gates: Gate[]): AreaStatus {
+  if (gates.some((g) => g.status === "BLOCK")) return "BLOCK";
+  if (gates.length === 0 || gates.some((g) => ["PENDING", "NOT_STARTED", "REWORK"].includes(g.status))) return "HOLD";
+  return "GO";
+}
+
 export function GoLiveDecisionPage() {
+  const features = useList<Feature>("features");
+  const gates = useList<Gate>("gates");
+  const wps = useList<SupplierWorkPackage>("supplierWorkPackages");
+  const plans = useList<ReleasePlan>("releasePlans");
+  const fieldIssues = useList<FieldIssueRecord>("fieldIssues");
+
+  const registry: AreaStatus = features.length === 0 ? "HOLD" : features.some((f) => !f.owners?.productOwner) ? "HOLD" : "GO";
+  const nineGate = gateStatus(gates);
+  const supplier: AreaStatus = wps.some((w) => w.reviewStatus === "BLOCK") ? "BLOCK" : wps.some((w) => w.reviewStatus === "REWORK" || w.reviewStatus === "PENDING") ? "HOLD" : "GO";
+  const releaseStage = features.filter((f) => f.status === "Released" || f.status === "Verified");
+  const data: AreaStatus = releaseStage.some((f) => !plans.find((p) => p.featureId === f.id)) ? "HOLD" : "GO";
+  const integration: AreaStatus = features.length === 0 ? "HOLD" : "GO";
+  const security = gateStatus(gates.filter((g) => g.gateCode === "RG7"));
+  const openIssues = fieldIssues.filter((i) => i.status === "OPEN");
+  const operations: AreaStatus = openIssues.some((i) => i.severity === "Critical") ? "BLOCK" : openIssues.length > 0 ? "HOLD" : "GO";
+
+  const statusByArea: Record<string, AreaStatus> = {
+    "LC0 / Registry": registry,
+    "9 Gate Readiness": nineGate,
+    "Supplier Evidence": supplier,
+    "Data / Migration": data,
+    Integration: integration,
+    "Security / Audit": security,
+    Operations: operations,
+  };
+  const subAreas = AREA_TEMPLATES.filter((t) => t.area !== "Executive Decision").map((t) => statusByArea[t.area]);
+  const exec: AreaStatus = subAreas.includes("BLOCK") ? "BLOCK" : subAreas.includes("HOLD") ? "HOLD" : "GO";
+  statusByArea["Executive Decision"] = exec;
+
+  const AREAS: DecisionArea[] = AREA_TEMPLATES.map((t) => ({ ...t, status: statusByArea[t.area] }));
   const goCount = AREAS.filter((a) => a.status === "GO").length;
-  const overall: ProductionDecision = AREAS.some((a) => a.status === "BLOCK") ? "BLOCK" : AREAS.some((a) => a.status === "HOLD") ? "HOLD" : "GO";
+  const overall: ProductionDecision = exec;
   const readiness = Math.round((goCount / AREAS.length) * 100);
 
   return (

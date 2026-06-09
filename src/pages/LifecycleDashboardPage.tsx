@@ -83,7 +83,7 @@ export function LifecycleDashboardPage() {
             ]}
           />
         ) : (
-          <Empty />
+          <Empty description="등록된 Feature가 없습니다." />
         )}
       </Card>
     </div>
