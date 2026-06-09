@@ -34,6 +34,17 @@
 
   --shadow-card: 0 1px 2px rgba(10, 31, 68, 0.06), 0 8px 24px -12px rgba(10, 31, 68, 0.18);
   --shadow-pop: 0 12px 40px -12px rgba(10, 31, 68, 0.35);
+
+  /* 크롬(사이드바·헤더) — 라이트 엔터프라이즈 기본값. 다크는 body[data-theme="dark"]에서 오버라이드. */
+  --chrome-bg: #ffffff;
+  --chrome-bg-2: #ffffff;
+  --chrome-border: #e6ebf2;
+  --chrome-text: #475569;
+  --chrome-text-dim: #94a3b8;
+  --chrome-text-active: #1f4e78;
+  --chrome-hover: #f1f5f9;
+  --chrome-active-bg: #eef3f9;
+  --chrome-accent: #1f4e78;
 }
 
 html,
@@ -85,8 +96,8 @@ h1, h2, h3, h4, h5,
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(420px 200px at 90% -40%, rgba(34, 211, 238, 0.35), transparent 70%),
-    radial-gradient(360px 200px at 100% 140%, rgba(99, 102, 241, 0.3), transparent 70%);
+    radial-gradient(420px 200px at 90% -40%, rgba(34, 211, 238, 0.18), transparent 70%),
+    radial-gradient(360px 200px at 100% 140%, rgba(99, 102, 241, 0.16), transparent 70%);
   pointer-events: none;
 }
 .fp-pagehead .fp-ph-icon {
@@ -135,9 +146,10 @@ h1, h2, h3, h4, h5,
   box-shadow: var(--shadow-pop);
 }
 
-/* 사이드바 */
+/* ── 사이드바 (라이트 엔터프라이즈) ── */
 .fp-sider {
-  background: var(--grad-chrome) !important;
+  background: var(--chrome-bg) !important;
+  border-right: 1px solid var(--chrome-border);
 }
 .fp-brand {
   display: flex;
@@ -145,73 +157,99 @@ h1, h2, h3, h4, h5,
   gap: 10px;
   height: 64px;
   padding: 0 18px;
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--chrome-text-active);
+  border-bottom: 1px solid var(--chrome-border);
 }
 .fp-brand-mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: var(--grad-cyan);
-  box-shadow: 0 0 18px rgba(34, 211, 238, 0.5);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--chrome-accent);
+  color: #fff;
   font-weight: 700;
+  font-size: 13px;
   font-family: "Space Grotesk", sans-serif;
 }
 
-/* 좌측 메뉴: 선택 항목 cyan glow */
-.fp-sider .ant-menu-dark.ant-menu-inline,
-.fp-sider .ant-menu-dark {
+/* 네비 검색 */
+.fp-nav-search {
+  padding: 10px 12px 6px;
+}
+
+/* 좌측 메뉴 — 글로우 제거, 단일 액센트 바 */
+.fp-sider .ant-menu {
   background: transparent !important;
+  border-inline-end: none !important;
 }
-.fp-sider .ant-menu-item {
-  border-radius: 10px !important;
-  margin: 4px 10px !important;
+.fp-sider .ant-menu-item,
+.fp-sider .ant-menu-submenu-title {
+  border-radius: 8px !important;
+  margin: 2px 10px !important;
   width: auto !important;
+  color: var(--chrome-text) !important;
 }
+.fp-sider .ant-menu-item a { color: inherit !important; }
+.fp-sider .ant-menu-item:hover,
+.fp-sider .ant-menu-submenu-title:hover {
+  background: var(--chrome-hover) !important;
+  color: var(--chrome-text-active) !important;
+}
+/* 그룹(SubMenu) 타이틀 = 섹션 헤더 톤 */
+.fp-sider .ant-menu-submenu > .ant-menu-submenu-title {
+  color: var(--chrome-text-dim) !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.fp-sider .ant-menu-submenu-arrow { color: var(--chrome-text-dim) !important; }
 .fp-sider .ant-menu-item-selected {
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.22), rgba(99, 102, 241, 0.22)) !important;
-  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.45);
+  background: var(--chrome-active-bg) !important;
+  color: var(--chrome-text-active) !important;
+  font-weight: 600;
+  box-shadow: none !important;
 }
+.fp-sider .ant-menu-item-selected a { color: var(--chrome-text-active) !important; }
 .fp-sider .ant-menu-item-selected::after {
   content: "";
   position: absolute;
   left: 0;
-  top: 18%;
-  height: 64%;
+  top: 20%;
+  height: 60%;
   width: 3px;
-  border-radius: 3px;
-  background: var(--cyan-400);
-  box-shadow: 0 0 10px var(--cyan-400);
+  border-radius: 0 3px 3px 0;
+  background: var(--chrome-accent);
+  box-shadow: none;
 }
 
-/* 헤더 글라스 */
+/* ── 헤더 (라이트) ── */
 .fp-header {
-  background: rgba(10, 31, 68, 0.92) !important;
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(34, 211, 238, 0.18);
+  background: var(--chrome-bg) !important;
+  border-bottom: 1px solid var(--chrome-border);
 }
+.fp-breadcrumb .ant-breadcrumb-link,
+.fp-breadcrumb a { color: var(--chrome-text) !important; }
+.fp-breadcrumb li:last-child .ant-breadcrumb-link { color: var(--chrome-text-active) !important; font-weight: 600; }
+.fp-breadcrumb .ant-breadcrumb-separator { color: var(--chrome-text-dim) !important; }
+
 .fp-role-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 4px 10px 4px 10px;
   border-radius: 999px;
-  background: rgba(34, 211, 238, 0.12);
-  border: 1px solid rgba(34, 211, 238, 0.4);
+  background: var(--chrome-active-bg);
+  border: 1px solid var(--chrome-border);
 }
-/* 역할 셀렉터: 다크 헤더 위에서 선택값이 잘 보이도록 라이트 텍스트로 강제 */
 .fp-role-pill .ant-select-selection-item {
-  color: #ffffff !important;
+  color: var(--chrome-text-active) !important;
   font-weight: 600;
 }
 .fp-role-pill .ant-select-arrow,
 .fp-role-pill .ant-select-selection-placeholder {
-  color: #cfe7f5 !important;
-}
-.fp-role-pill .ant-select:hover .ant-select-selection-item {
-  color: #7fdfef !important;
+  color: var(--chrome-text-dim) !important;
 }
 
 /* 상태 점 */
@@ -272,6 +310,17 @@ body[data-theme="dark"] {
   --th-text: #cbd5e1;
   --fp-ink: #e2e8f0;
   background: var(--canvas);
+
+  /* 크롬 — 정제된 다크 네이비(글로우 축소) */
+  --chrome-bg: #0c1a30;
+  --chrome-bg-2: #0a1730;
+  --chrome-border: #1e2f49;
+  --chrome-text: #aeb9cc;
+  --chrome-text-dim: #6b7c95;
+  --chrome-text-active: #ffffff;
+  --chrome-hover: rgba(255, 255, 255, 0.06);
+  --chrome-active-bg: rgba(56, 189, 248, 0.14);
+  --chrome-accent: #38bdf8;
 }
 body[data-theme="dark"] .fp-canvas {
   background-image:

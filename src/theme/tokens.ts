@@ -53,7 +53,13 @@ export const antdTheme: ThemeConfig = {
   },
   components: {
     Layout: { headerBg: "transparent", siderBg: "transparent", bodyBg: "transparent" },
-    Menu: { darkItemBg: "transparent", darkItemSelectedBg: "transparent", darkItemColor: "rgba(255,255,255,0.78)", darkItemSelectedColor: "#ffffff", darkItemHoverColor: "#ffffff" },
+    Menu: {
+      // 다크(다크모드)
+      darkItemBg: "transparent", darkItemSelectedBg: "transparent", darkItemColor: "rgba(255,255,255,0.78)", darkItemSelectedColor: "#ffffff", darkItemHoverColor: "#ffffff",
+      // 라이트(기본) — 엔터프라이즈 톤. 세부는 index.css 변수로 최종 제어.
+      itemBg: "transparent", itemColor: "#475569", itemSelectedColor: tokens.color.primaryNavy, itemSelectedBg: "#eef3f9",
+      itemHoverColor: tokens.color.primaryNavy, itemHoverBg: "#f1f5f9", groupTitleColor: "#94a3b8",
+    },
     Card: { borderRadiusLG: tokens.radius.card },
     Table: { headerBg: tokens.color.surfaceSubtle, borderColor: tokens.color.border, rowHoverBg: "#eef5fc" },
     Statistic: { contentFontSize: 26 },
