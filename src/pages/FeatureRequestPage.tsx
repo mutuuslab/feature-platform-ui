@@ -1,13 +1,12 @@
 // UI-001 Feature Request — 3-Step 제안서 등록 위저드 (제안 개요/배경 · 기술개요/운영안/적용범위 · 유관부서/경영층)
 import { useState } from "react";
-import { Alert, Button, Card, Col, Form, Input, Result, Row, Segmented, Select, Space, Steps, Switch } from "antd";
+import { Button, Card, Col, Form, Input, Result, Row, Segmented, Select, Space, Steps, Switch } from "antd";
 import { ArrowRightOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { Link } from "react-router";
 import { store, useMutate } from "../data/useStore";
 import type { FeatureRequest } from "../domain/types";
 import { DataQualityBanner, PageHeader } from "../components/Common";
 import { useRole } from "../auth/RoleContext";
-import { can } from "../auth/rbac";
 
 const TEAMS = ["ADAS팀", "Connectivity팀", "Powertrain팀", "Body/Chassis팀", "Infotainment팀", "기획팀"];
 const NEEDS_SOURCES = ["품질대외지수", "Tracking 자료", "기획조사 자료"];
@@ -52,8 +51,8 @@ const STEP_FIELDS: string[][] = [
 export function FeatureRequestPage() {
   const [form] = Form.useForm();
   const mutate = useMutate();
-  const { role, userName } = useRole();
-  const allowed = can(role, "request.create");
+  const { userName } = useRole();
+  const allowed = true; // 데모(test): 역할 무관하게 누구나 작성 가능
 
   const [step, setStep] = useState(0);
   const [needsSource, setNeedsSource] = useState(NEEDS_SOURCES[0]);
@@ -137,7 +136,6 @@ export function FeatureRequestPage() {
     <div>
       <PageHeader title="Feature 신규 등록" subtitle="UI-001 · 제안서 3-Step 등록" icon="📝" extra={<span style={{ color: "#fff", fontWeight: 600 }}>Step {step + 1} of 3</span>} />
       <DataQualityBanner />
-      {!allowed && <Alert type="warning" showIcon style={{ marginBottom: 16 }} message="작성 권한 없음 — 'Feature Requester' 또는 'Admin'으로 전환하세요 (RBAC-001)." />}
 
       <Steps current={step} style={{ marginBottom: 20, maxWidth: 720 }} items={[{ title: "제안 개요·배경" }, { title: "기술 개요·운영안" }, { title: "유관부서·경영층" }]} />
 
