@@ -25,6 +25,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # 백엔드(예: vast.ai) URL 을 Pages 빌드에 주입. 비밀 아님(공개 URL) → repo Variable 사용.
+          # GitHub → Settings → Secrets and variables → Actions → Variables → VITE_API_URL = https://<백엔드-https-주소>
+          # 미설정 시 빈 값 → 앱은 정적 Mock 모드로 동작. ANTHROPIC_API_KEY 는 여기 절대 넣지 말 것(백엔드에만).
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

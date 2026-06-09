@@ -1,5 +1,6 @@
 // Feature Platform 백엔드 stub (Node/TS + Express). 시트 28 API Contract + OpenAPI.
 // 실행: npm install && npm run dev  →  http://localhost:9100  (Swagger UI: /docs)
+import "dotenv/config"; // server/.env 자동 로드 (ANTHROPIC_API_KEY 등) — 다른 import보다 먼저 실행
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import Anthropic from "@anthropic-ai/sdk";
@@ -9,8 +10,32 @@ import { AI_TASKS, type AiTaskKey } from "./ai.js";
 
 const PORT = Number(process.env.PORT) || 9100; // 포트 8000 금지 규칙
 const app = express();
-app.use(cors());
+app.set("trust proxy", true); // 터널/프록시(Cloudflare 등) 뒤에서 실제 클라이언트 IP 인식
+
+// CORS: 기본은 전체 허용. 공개 배포 시 ALLOWED_ORIGIN 에 Pages 도메인만 지정 권장.
+//   예) ALLOWED_ORIGIN=https://mutuuslab.github.io
+const ORIGINS = (process.env.ALLOWED_ORIGIN || "*").split(",").map((s) => s.trim()).filter(Boolean);
+app.use(cors({ origin: ORIGINS.includes("*") ? true : ORIGINS }));
 app.use(express.json());
+
+// AI 엔드포인트 간이 레이트리밋 (IP당 분당 호출 제한) — 공개 백엔드의 키 남용/비용 폭주 방지.
+const AI_RATE_PER_MIN = Number(process.env.AI_RATE_PER_MIN) || 30;
+const aiHits = new Map<string, { count: number; resetAt: number }>();
+app.use("/api/ai", (req, res, next) => {
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const e = aiHits.get(ip);
+  if (!e || now > e.resetAt) {
+    aiHits.set(ip, { count: 1, resetAt: now + 60_000 });
+    return next();
+  }
+  if (e.count >= AI_RATE_PER_MIN) {
+    res.setHeader("Retry-After", Math.ceil((e.resetAt - now) / 1000));
+    return res.status(429).json({ error: `요청이 너무 많습니다 (분당 ${AI_RATE_PER_MIN}회 제한).` });
+  }
+  e.count += 1;
+  next();
+});
 
 let db = buildServerDb();
 const RESOURCES = Object.keys(db) as ResourceName[];
@@ -185,4 +210,6 @@ app.listen(PORT, () => {
   console.log(`Feature Platform API stub → http://localhost:${PORT}`);
   console.log(`  Swagger UI: http://localhost:${PORT}/docs`);
   console.log(`  Bootstrap : http://localhost:${PORT}/api/bootstrap`);
+  console.log(`  AI(/api/ai): ${anthropic ? "ENABLED (claude-opus-4-8)" : "DISABLED — ANTHROPIC_API_KEY 미설정 → 503"}`);
+  console.log(`  CORS origin: ${ORIGINS.includes("*") ? "* (전체 허용)" : ORIGINS.join(", ")} · AI rate: ${AI_RATE_PER_MIN}/min`);
 });
