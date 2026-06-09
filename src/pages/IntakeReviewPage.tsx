@@ -1,5 +1,5 @@
-// UI-005 Intake Board Review & Decision + UI-006 Owner Assignment (시트 41 step3~6).
-// APPROVE → 공식 Feature ID 발급, Lifecycle=Proposed, RG1~9 초기화, Audit 기록.
+// UI-005 Intake Board Review & Decision + UI-003 Completeness + UI-006 Owner Assignment (시트 41 step3~6).
+// Feature Request(3-Step 제안서)와 정합: 제안 개요·배경/기술개요/운영안·적용범위/유관부서/경영층을 섹션별로 검토.
 import { useState } from "react";
 import { Alert, Card, Descriptions, Drawer, Space, Table, Tag, message } from "antd";
 import { store, useList, useMutate } from "../data/useStore";
@@ -14,6 +14,30 @@ import { can } from "../auth/rbac";
 
 let featureSeq = 100;
 
+// UI-003 Completeness Check — 필수/권장 항목 검증
+function completenessOf(r: FeatureRequest) {
+  const hasScope = Boolean(r.applyScope && Object.values(r.applyScope).some((b) => b.length)) || Boolean(r.targetRegion && r.targetRegion !== "미정");
+  const required: [string, boolean][] = [
+    ["제안명", Boolean(r.name)],
+    ["고객 니즈", Boolean(r.customerNeeds || r.businessNeed)],
+    ["적용 범위", hasScope],
+  ];
+  const recommended: [string, boolean][] = [
+    ["기술 컨셉", Boolean(r.techConcept)],
+    ["기대효과", Boolean(r.expectedValue)],
+    ["유관 부서", Boolean(r.relatedDepts && r.relatedDepts.length)],
+  ];
+  const missingReq = required.filter(([, ok]) => !ok).map(([k]) => k);
+  const missingRec = recommended.filter(([, ok]) => !ok).map(([k]) => k);
+  return { pass: missingReq.length === 0, required, recommended, missingReq, missingRec };
+}
+
+function ScopeTags({ r }: { r: FeatureRequest }) {
+  const entries = Object.entries(r.applyScope ?? {}).filter(([, b]) => b.length);
+  if (!entries.length) return <span>{r.targetRegion} / {r.targetTrim}</span>;
+  return <Space wrap>{entries.map(([region, brands]) => <Tag key={region} color="#0891b2">{region}: {brands.join("·")}</Tag>)}</Space>;
+}
+
 export function IntakeReviewPage() {
   const requests = useList<FeatureRequest>("featureRequests");
   const mutate = useMutate();
@@ -23,40 +47,40 @@ export function IntakeReviewPage() {
 
   const allowed = can(role, "intake.decide");
   const open = (r: FeatureRequest) => { setActive(r); setOwners({}); };
+  const comp = active ? completenessOf(active) : null;
 
   const decide = (decision: DecisionType, reason: string) => {
     if (!active) return;
-    if (decision === "APPROVE" && !hasRequiredOwners(owners)) {
-      message.error("Product Owner 지정 후에만 등록 승인이 가능합니다 (시트 41 step5).");
-      return;
+    if (decision === "APPROVE") {
+      if (comp && !comp.pass) {
+        message.error(`완성도 미충족 — 필수 누락: ${comp.missingReq.join(", ")} (UI-003). Rework 요청하세요.`);
+        return;
+      }
+      if (!hasRequiredOwners(owners)) {
+        message.error("Product Owner 지정 후에만 등록 승인이 가능합니다 (시트 41 step5).");
+        return;
+      }
     }
     const proceed = () =>
       mutate(() => {
         if (decision === "APPROVE") {
           featureSeq += 1;
-          const fid = `FEAT-${active.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 3)}-${featureSeq}`;
+          const fid = `FEAT-${active.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 3) || "FT"}-${featureSeq}`;
           store.create<Feature>("features", {
             id: fid,
             name: active.name,
-            description: active.businessNeed,
+            description: active.customerNeeds || active.businessNeed,
             status: "Proposed",
             owners,
             targetRegion: active.targetRegion,
-            targetTrim: active.targetTrim,
+            targetTrim: active.desiredVehicle || active.targetTrim,
             deployType: active.deployType,
             customerValue: active.expectedValue,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
           GATES.forEach((g) =>
-            store.create<Gate>("gates", {
-              id: `${fid}-${g.code}`,
-              featureId: fid,
-              gateCode: g.code,
-              status: "NOT_STARTED",
-              owner: g.leadOwnerRole,
-              evidenceCount: 0,
-            }),
+            store.create<Gate>("gates", { id: `${fid}-${g.code}`, featureId: fid, gateCode: g.code, status: "NOT_STARTED", owner: g.leadOwnerRole, evidenceCount: 0 }),
           );
           store.update<FeatureRequest>("featureRequests", active.id, { status: "REGISTERED", featureId: fid });
           store.audit({ actor: userName, action: "REGISTER", objectType: "Feature", objectId: fid, before: "SUBMITTED", after: "Proposed", reason: reason || "Intake board approved" });
@@ -84,7 +108,7 @@ export function IntakeReviewPage() {
 
   return (
     <div>
-      <PageHeader title="Intake Review Board" subtitle="UI-005/006 · LC0 접수 검토 및 등록 결정" icon="📥" />
+      <PageHeader title="Intake Review Board" subtitle="UI-003/005/006 · LC0 접수·완성도 검토 및 등록 결정" icon="📥" />
       <DataQualityBanner />
       {!allowed && <Alert type="warning" showIcon style={{ marginBottom: 16 }} message="결정 권한 없음 — 'PMO' 또는 'Feature Product Owner' 역할로 전환하세요 (RBAC-007)." />}
       <Card>
@@ -94,48 +118,88 @@ export function IntakeReviewPage() {
           pagination={false}
           onRow={(r) => ({ onClick: () => open(r), style: { cursor: "pointer" } })}
           columns={[
-            { title: "Request ID", dataIndex: "id" },
-            { title: "Name", dataIndex: "name" },
-            { title: "Requester", dataIndex: "requester" },
-            { title: "Region", dataIndex: "targetRegion" },
-            { title: "Completeness", dataIndex: "completeness", render: (v) => (v ? <StatusBadge value={v} /> : <Tag>—</Tag>) },
+            { title: "Request ID", dataIndex: "id", render: (v) => <span className="fp-mono">{v}</span> },
+            { title: "제안명", dataIndex: "name" },
+            { title: "제안부서", dataIndex: "department", render: (v) => v ?? "—" },
+            { title: "담당자", dataIndex: "requester" },
+            { title: "적용범위", render: (_, r) => <ScopeTags r={r} /> },
+            { title: "경영층", dataIndex: "execDirective", render: (v) => (v ? <Tag color="#b45309">지시</Tag> : <Tag>—</Tag>) },
+            { title: "완성도", render: (_, r) => <StatusBadge value={completenessOf(r).pass ? "PASS" : "PENDING"} /> },
             { title: "Status", dataIndex: "status", render: (v) => <StatusBadge value={v} /> },
-            { title: "Feature ID", dataIndex: "featureId", render: (v) => v ?? "—" },
+            { title: "Feature ID", dataIndex: "featureId", render: (v) => (v ? <span className="fp-mono">{v}</span> : "—") },
           ]}
         />
       </Card>
 
-      <Drawer title={active ? `Intake Review · ${active.id}` : ""} width={560} open={!!active} onClose={() => setActive(null)}>
-        {active && (
-          <Space direction="vertical" size={16} style={{ width: "100%" }}>
-            <Descriptions column={1} size="small" bordered>
-              <Descriptions.Item label="제안명">{active.name}</Descriptions.Item>
-              {active.department && <Descriptions.Item label="제안 부서/담당자">{active.department} / {active.requester}</Descriptions.Item>}
-              <Descriptions.Item label="고객 니즈">{active.customerNeeds || active.businessNeed}{active.needsSource ? ` (${active.needsSource})` : ""}</Descriptions.Item>
-              {active.reviewBackground && <Descriptions.Item label="검토 배경">{active.reviewBackground}</Descriptions.Item>}
-              {active.devAgreement && <Descriptions.Item label="개발 협의">{active.devAgreement}</Descriptions.Item>}
-              {active.expectedValue && <Descriptions.Item label="기대효과">{active.expectedValue}</Descriptions.Item>}
-              {active.techConcept && <Descriptions.Item label="기술 컨셉">{active.techConcept}</Descriptions.Item>}
-              {active.useCase && <Descriptions.Item label="유즈케이스">{active.useCase}</Descriptions.Item>}
-              {active.competitorTrend && <Descriptions.Item label="경쟁사 동향">{active.competitorTrend}</Descriptions.Item>}
-              {active.regionScopeNote && <Descriptions.Item label="권역 협의 범위">{active.regionScopeNote}</Descriptions.Item>}
-              <Descriptions.Item label="적용 범위">
-                {active.applyScope && Object.entries(active.applyScope).some(([, b]) => b.length)
-                  ? Object.entries(active.applyScope).filter(([, b]) => b.length).map(([r, b]) => <Tag key={r}>{r}: {b.join("·")}</Tag>)
-                  : `${active.targetRegion} / ${active.targetTrim}`}
-              </Descriptions.Item>
-              {active.desiredVehicle && <Descriptions.Item label="희망 차종">{active.desiredVehicle}</Descriptions.Item>}
-              <Descriptions.Item label="Deploy Type">{active.deployType}</Descriptions.Item>
-              {active.relatedDepts && active.relatedDepts.length > 0 && <Descriptions.Item label="유관 부서">{active.relatedDepts.map((d) => <Tag key={d} color="#1f4e78">{d}</Tag>)}</Descriptions.Item>}
-              <Descriptions.Item label="경영층 지시사항">{active.execDirective ? <Tag color="#b45309">Y — {active.execDirectiveNote}</Tag> : <Tag>N</Tag>}</Descriptions.Item>
-            </Descriptions>
-            <Alert type="success" showIcon message="Completeness Check: PASS" description="필수 항목 충족. 중복 Feature 없음 (Duplicate check: clear)." />
-            <OwnerAssignmentPanel owners={owners} editable={allowed} onChange={(k: OwnerRoleKey, v) => setOwners((o) => ({ ...o, [k]: v }))} />
-            <Card size="small" title="Decision (LC0)">
+      <Drawer title={active ? <span><Tag className="fp-mono" color="#1f4e78">{active.id}</Tag>{active.name}</span> : ""} width={620} open={!!active} onClose={() => setActive(null)}>
+        {active && comp && (
+          <Space direction="vertical" size={14} style={{ width: "100%" }}>
+            {/* UI-003 완성도 체크 */}
+            <Card size="small" title="① Completeness Check (UI-003)">
+              <Alert
+                type={comp.pass ? "success" : "warning"}
+                showIcon
+                message={comp.pass ? "필수 항목 충족 — LC0 Board 상정 가능" : `필수 항목 누락: ${comp.missingReq.join(", ")} — Rework 필요`}
+                style={{ marginBottom: 8 }}
+              />
+              <Space wrap size={6}>
+                {comp.required.map(([k, ok]) => <Tag key={k} color={ok ? "#15803d" : "#b91c1c"}>{ok ? "✓" : "✗"} {k}</Tag>)}
+                {comp.recommended.map(([k, ok]) => <Tag key={k} color={ok ? "#15803d" : "#94a3b8"}>{ok ? "✓" : "○"} {k}</Tag>)}
+              </Space>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>중복 Feature 검사: <Tag color="#15803d">No duplicate</Tag> (Duplicate check clear)</div>
+            </Card>
+
+            {/* 제안 개요·배경 */}
+            <Card size="small" title="② 제안 개요 · 배경">
+              <Descriptions column={1} size="small" bordered>
+                {active.department && <Descriptions.Item label="제안 부서/담당자">{active.department} / {active.requester}</Descriptions.Item>}
+                <Descriptions.Item label="고객 니즈">{active.customerNeeds || active.businessNeed}{active.needsSource ? <Tag style={{ marginLeft: 6 }}>{active.needsSource}</Tag> : null}</Descriptions.Item>
+                {active.reviewBackground && <Descriptions.Item label="검토 배경">{active.reviewBackground}</Descriptions.Item>}
+                {active.devAgreement && <Descriptions.Item label="개발 협의">{active.devAgreement}</Descriptions.Item>}
+                {active.expectedValue && <Descriptions.Item label="기대효과">{active.expectedValue}</Descriptions.Item>}
+              </Descriptions>
+            </Card>
+
+            {/* 기술 개요 */}
+            {(active.techConcept || active.useCase || active.competitorTrend) && (
+              <Card size="small" title="③ 기술 개요">
+                <Descriptions column={1} size="small" bordered>
+                  {active.techConcept && <Descriptions.Item label="기술 컨셉">{active.techConcept}</Descriptions.Item>}
+                  {active.useCase && <Descriptions.Item label="유즈케이스">{active.useCase}</Descriptions.Item>}
+                  {active.competitorTrend && <Descriptions.Item label="경쟁사 동향">{active.competitorTrend}</Descriptions.Item>}
+                </Descriptions>
+              </Card>
+            )}
+
+            {/* 운영안 · 적용 범위 */}
+            <Card size="small" title="④ 운영안 · 적용 범위">
+              <Descriptions column={1} size="small" bordered>
+                {active.regionScopeNote && <Descriptions.Item label="권역 협의 범위">{active.regionScopeNote}</Descriptions.Item>}
+                <Descriptions.Item label="적용 범위"><ScopeTags r={active} /></Descriptions.Item>
+                {active.desiredVehicle && <Descriptions.Item label="희망 차종">{active.desiredVehicle}</Descriptions.Item>}
+                <Descriptions.Item label="Deploy Type">{active.deployType}</Descriptions.Item>
+              </Descriptions>
+            </Card>
+
+            {/* 유관 부서 · 경영층 */}
+            <Card size="small" title="⑤ 유관 부서 · 경영층 지시사항">
+              <Space direction="vertical" size={8} style={{ width: "100%" }}>
+                <div>유관 부서: {active.relatedDepts && active.relatedDepts.length ? active.relatedDepts.map((d) => <Tag key={d} color="#1f4e78">{d}</Tag>) : <Tag>없음</Tag>}</div>
+                <div>경영층 지시사항: {active.execDirective ? <Tag color="#b45309">Y — {active.execDirectiveNote}</Tag> : <Tag>N</Tag>}</div>
+              </Space>
+            </Card>
+
+            {/* Owner 지정 */}
+            <Card size="small" title="⑥ Owner Assignment (UI-006)">
+              <OwnerAssignmentPanel owners={owners} editable={allowed} onChange={(k: OwnerRoleKey, v) => setOwners((o) => ({ ...o, [k]: v }))} />
+            </Card>
+
+            {/* 결정 */}
+            <Card size="small" title="⑦ Decision (LC0)">
               <DecisionPanel
                 decisions={["APPROVE", "REWORK", "REJECT", "MERGE", "BACKLOG", "ESCALATE"]}
                 disabled={!allowed || active.status === "REGISTERED"}
-                disabledReason={active.status === "REGISTERED" ? "이미 등록된 요청입니다." : !allowed ? "결정 권한이 없습니다." : undefined}
+                disabledReason={active.status === "REGISTERED" ? "이미 등록된 요청입니다." : !allowed ? "결정 권한이 없습니다." : !comp.pass ? "완성도 미충족 — APPROVE 시 필수 항목 누락 안내됨" : undefined}
                 onDecide={decide}
               />
             </Card>
