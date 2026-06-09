@@ -1,16 +1,25 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 import App from "./App";
 
-// 앱이 런타임 오류 없이 마운트되고 메인 셸/대시보드가 렌더되는지 확인 (Refine+Router+antd 배선 검증).
+afterEach(() => localStorage.clear());
+
+// 앱이 로그인 게이트 → 메인 셸/대시보드까지 런타임 오류 없이 마운트되는지 확인.
 describe("App smoke", () => {
-  it("AppShell과 Control Tower 대시보드가 렌더된다", async () => {
+  it("로그인 화면이 먼저 뜬다 (게이트)", async () => {
     render(<App />);
-    // 사이드바 브랜드
-    await waitFor(() => {
-      expect(screen.getByText("Feature Platform")).toBeInTheDocument();
-    });
-    // 대시보드 타이틀(nav+header 2곳) + 시드 Feature 표시
+    expect(await screen.findByPlaceholderText("ID")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "로그인" })).toBeInTheDocument();
+  });
+
+  it("admin/admin 로그인 후 Control Tower 대시보드가 렌더된다", async () => {
+    render(<App />);
+    fireEvent.change(await screen.findByPlaceholderText("ID"), { target: { value: "admin" } });
+    fireEvent.change(screen.getByPlaceholderText("Password"), { target: { value: "admin" } });
+    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
+
+    await waitFor(() => expect(screen.getByText("Feature Platform")).toBeInTheDocument());
     expect((await screen.findAllByText("Control Tower")).length).toBeGreaterThan(0);
     expect(await screen.findByText("Remote Parking Assist")).toBeInTheDocument();
   });

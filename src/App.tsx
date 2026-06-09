@@ -13,6 +13,8 @@ import { restDataProvider, fetchBootstrap } from "./data/restDataProvider";
 import { USE_BACKEND } from "./data/apiConfig";
 import { store, useMutate, setConnected } from "./data/useStore";
 import { RoleProvider } from "./auth/RoleContext";
+import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { LoginPage } from "./pages/LoginPage";
 import { AppShell } from "./components/AppShell";
 
 import { DashboardPage } from "./pages/DashboardPage";
@@ -72,12 +74,24 @@ function Root() {
   }, [mutate]);
 
   return (
+    <ConfigProvider theme={{ ...antdTheme, algorithm: dark ? antdAlgo.darkAlgorithm : antdAlgo.defaultAlgorithm }}>
+      <AntdApp>
+        <AuthProvider>
+          <Gate />
+        </AuthProvider>
+      </AntdApp>
+    </ConfigProvider>
+  );
+}
+
+function Gate() {
+  const { authed } = useAuth();
+  if (!authed) return <LoginPage />;
+  return (
     <BrowserRouter>
-      <ConfigProvider theme={{ ...antdTheme, algorithm: dark ? antdAlgo.darkAlgorithm : antdAlgo.defaultAlgorithm }}>
-        <AntdApp>
-          <Refine
-            dataProvider={USE_BACKEND ? restDataProvider : dataProvider}
-            routerProvider={routerProvider}
+      <Refine
+        dataProvider={USE_BACKEND ? restDataProvider : dataProvider}
+        routerProvider={routerProvider}
             notificationProvider={useNotificationProvider}
             resources={[
               { name: "features", list: "/features", show: "/features/:id" },
@@ -131,8 +145,6 @@ function Root() {
               </Routes>
             </RoleProvider>
           </Refine>
-        </AntdApp>
-      </ConfigProvider>
     </BrowserRouter>
   );
 }

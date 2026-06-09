@@ -1,10 +1,11 @@
 // CMP-001 AppShell — Mission-Control 셸 + 역할 기반 그룹 네비게이션 (시트 35, 23).
 import { useEffect, useMemo, useState } from "react";
 import { Avatar, Button, Layout, Menu, Select, Tag, Tooltip, Typography } from "antd";
-import { BulbOutlined, MoonOutlined } from "@ant-design/icons";
+import { BulbOutlined, LogoutOutlined, MoonOutlined } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { ROLES } from "../auth/rbac";
 import { useRole } from "../auth/RoleContext";
+import { useAuth } from "../auth/AuthContext";
 import { useConnected } from "../data/useStore";
 import { USE_BACKEND } from "../data/apiConfig";
 import { landingForRole, navForRole } from "../auth/nav";
@@ -21,6 +22,7 @@ export function AppShell() {
   const { role, roleLabel, userName, setRole } = useRole();
 
   const { dark, toggle } = useTheme();
+  const { logout } = useAuth();
   const connected = useConnected();
   const groups = useMemo(() => navForRole(role), [role]);
   const allItems = groups.flatMap((g) => g.items);
@@ -98,6 +100,9 @@ export function AppShell() {
               {userName.split(" ").map((w) => w[0]).join("").slice(0, 2)}
             </Avatar>
           </div>
+          <Tooltip title="로그아웃">
+            <Button type="text" shape="circle" icon={<LogoutOutlined style={{ color: "#cfe0ec" }} />} onClick={logout} style={{ marginLeft: 8 }} />
+          </Tooltip>
         </Header>
         <Content className="fp-canvas">
           <div style={{ maxWidth: tokens.layout.contentMaxWidth, margin: "0 auto", padding: 24 }}>
