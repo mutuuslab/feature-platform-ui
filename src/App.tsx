@@ -18,7 +18,22 @@ import { LoginPage } from "./pages/LoginPage";
 import { AppShell } from "./components/AppShell";
 
 // 라우트 페이지는 코드 스플리팅 (React.lazy) — 초기 번들에서 제외, 진입 시 청크 로드.
-const named = (p: Promise<Record<string, unknown>>, key: string) => p.then((m) => ({ default: m[key] as ComponentType }));
+// 배포 직후 브라우저가 캐시한 옛 index.html이 사라진 청크를 부르면 dynamic import가 404로 실패한다.
+// 이때 1회 강제 새로고침으로 최신 index.html을 받아 자가 복구(빈 화면 방지).
+const named = (p: Promise<Record<string, unknown>>, key: string) =>
+  p
+    .then((m) => {
+      sessionStorage.removeItem("fp-chunk-reload");
+      return { default: m[key] as ComponentType };
+    })
+    .catch((err) => {
+      if (!sessionStorage.getItem("fp-chunk-reload")) {
+        sessionStorage.setItem("fp-chunk-reload", "1");
+        window.location.reload();
+        return new Promise<{ default: ComponentType }>(() => {}); // 새로고침까지 대기
+      }
+      throw err;
+    });
 
 const DashboardPage = lazy(() => named(import("./pages/DashboardPage"), "DashboardPage"));
 const FeatureRequestPage = lazy(() => named(import("./pages/FeatureRequestPage"), "FeatureRequestPage"));
