@@ -4,7 +4,7 @@ import { useNotificationProvider } from "@refinedev/antd";
 import routerProvider from "@refinedev/react-router";
 import "@refinedev/antd/dist/reset.css";
 import { App as AntdApp, ConfigProvider, theme as antdAlgo } from "antd";
-import { BrowserRouter, Route, Routes } from "react-router";
+import { HashRouter, Route, Routes } from "react-router";
 
 import { antdTheme } from "./theme/tokens";
 import { ThemeProvider, useTheme } from "./theme/ThemeContext";
@@ -88,7 +88,7 @@ function Gate() {
   const { authed } = useAuth();
   if (!authed) return <LoginPage />;
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Refine
         dataProvider={USE_BACKEND ? restDataProvider : dataProvider}
         routerProvider={routerProvider}
@@ -145,6 +145,6 @@ function Gate() {
               </Routes>
             </RoleProvider>
           </Refine>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
