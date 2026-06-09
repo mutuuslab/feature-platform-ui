@@ -21,6 +21,7 @@ describe("App smoke", () => {
 
     await waitFor(() => expect(screen.getByText("Feature Platform")).toBeInTheDocument());
     expect((await screen.findAllByText("Control Tower")).length).toBeGreaterThan(0);
-    expect(await screen.findByText("Remote Parking Assist")).toBeInTheDocument();
+    // DashboardPage 는 React.lazy(+recharts) 라 jsdom에서 해석/렌더가 느릴 수 있어 여유 타임아웃 부여.
+    expect(await screen.findByText("Remote Parking Assist", {}, { timeout: 5000 })).toBeInTheDocument();
   });
 });

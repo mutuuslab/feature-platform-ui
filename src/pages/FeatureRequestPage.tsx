@@ -12,7 +12,7 @@ import {
 } from "@ant-design/icons";
 import { Link } from "react-router";
 import { store, useList, useMutate } from "../data/useStore";
-import type { AttachmentMeta, Feature, FeatureRequest } from "../domain/types";
+import type { AttachmentMeta, DeptStatus, Feature, FeatureRequest } from "../domain/types";
 import { DataQualityBanner, PageHeader } from "../components/Common";
 import { useRole } from "../auth/RoleContext";
 import {
@@ -31,13 +31,23 @@ const BRANDS = ["현대", "기아", "제네시스"];
 const SEGMENTS = ["경차/소형", "준중형", "중형", "대형/플래그십", "SUV/RV", "EV 전용", "상용/PBV"];
 const SOP_OPTIONS = ["'26 4Q", "'27 1Q", "'27 2Q", "'27 4Q", "'28 MY", "'29 MY", "미정"];
 const BIZ_MODELS = ["기본 탑재", "유상 옵션", "구독 (Subscription)", "FoD (Feature on Demand)"];
+// ── Full 거버넌스 옵션 ──
+const CATEGORIES = ["ADAS/자율주행", "Connectivity/커넥티드", "Infotainment", "Powertrain/전동화", "Body/Chassis", "Safety/Security"];
+const PRIORITIES = ["긴급", "높음", "보통", "낮음"];
+const ASIL_LEVELS = ["QM", "ASIL A", "ASIL B", "ASIL C", "ASIL D"];
+const INVEST_BANDS = ["< 10억", "10~50억", "50~100억", "100억+", "미정"];
+const APPROVAL_REQUESTS = ["신규 등록 승인", "선행 검토", "보류(Backlog)"];
+const DEPT_STATUSES: DeptStatus[] = ["미요청", "협의중", "완료"];
+const DEPT_STATUS_COLOR: Record<DeptStatus, string> = { 미요청: "#94a3b8", 협의중: "#b45309", 완료: "#15803d" };
 
 // 필드 → 위저드 step 매핑 (검토 결과에서 해당 step으로 점프)
 const STEP_OF_FIELD: Record<string, number> = {
   name: 0, department: 0, requester: 0, customerNeeds: 0, reviewBackground: 0, devAgreement: 0, expectedValue: 0,
+  category: 0, priority: 0, metricBaseline: 0, metricTarget: 0,
   techConcept: 1, useCase: 1, competitorTrend: 1, regionScopeNote: 1, desiredVehicle: 1, deployType: 1,
   applyScope: 1, applySegments: 1, targetSOP: 1, businessModel: 1, volumeEstimate: 1,
-  relatedDepts: 2, execDirectiveNote: 2,
+  dependencyHW: 1, dependencySW: 1, asilLevel: 1, cyberR155: 1, cyberNote: 1, dataCollected: 1, personalData: 1, otaRollback: 1, phasedRollout: 1,
+  relatedDepts: 2, execDirectiveNote: 2, investBand: 2, bepNote: 2, devStartTarget: 2, approvalRequest: 2,
 };
 
 // 적용 범위 매트릭스 (권역 × 브랜드 다중 토글)
@@ -85,9 +95,9 @@ function ChipToggle({ options, value, onChange, onColor = "#1f4e78" }: { options
 }
 
 const STEP_FIELDS: string[][] = [
-  ["name", "department", "requester", "customerNeeds", "reviewBackground", "devAgreement", "expectedValue"],
-  ["techConcept", "useCase", "competitorTrend", "regionScopeNote", "desiredVehicle", "deployType", "targetSOP", "businessModel", "volumeEstimate"],
-  ["execDirectiveNote"],
+  ["name", "department", "requester", "customerNeeds", "reviewBackground", "devAgreement", "expectedValue", "category", "priority", "metricBaseline", "metricTarget"],
+  ["techConcept", "useCase", "competitorTrend", "regionScopeNote", "desiredVehicle", "deployType", "targetSOP", "businessModel", "volumeEstimate", "dependencyHW", "dependencySW", "asilLevel", "cyberR155", "cyberNote", "dataCollected", "personalData", "otaRollback", "phasedRollout"],
+  ["execDirectiveNote", "investBand", "bepNote", "devStartTarget", "approvalRequest"],
 ];
 
 export function FeatureRequestPage() {
@@ -102,6 +112,7 @@ export function FeatureRequestPage() {
   const [applyScope, setApplyScope] = useState<Record<string, string[]>>({});
   const [applySegments, setApplySegments] = useState<string[]>([]);
   const [relatedDepts, setRelatedDepts] = useState<string[]>([]);
+  const [deptStatus, setDeptStatus] = useState<Record<string, DeptStatus>>({});
   const [execDirective, setExecDirective] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentMeta[]>([]);
   const [submittedId, setSubmittedId] = useState<string | null>(null);
@@ -136,7 +147,7 @@ export function FeatureRequestPage() {
   // 현재 폼 값 + 비-폼 상태를 합친 평면 객체 (AI 검토/요약/중복 입력용)
   const collect = (): Record<string, unknown> => {
     const v = form.getFieldsValue(true);
-    return { ...v, needsSource, applyScope, applySegments, relatedDepts, execDirective, attachments };
+    return { ...v, needsSource, applyScope, applySegments, relatedDepts, deptStatus, execDirective, attachments };
   };
 
   const buildRequest = (status: FeatureRequest["status"]): FeatureRequest => {
@@ -173,6 +184,25 @@ export function FeatureRequestPage() {
       execDirective,
       execDirectiveNote: execDirective ? v.execDirectiveNote : undefined,
       attachments,
+      // Full 거버넌스
+      category: v.category,
+      priority: v.priority,
+      metricBaseline: v.metricBaseline,
+      metricTarget: v.metricTarget,
+      dependencyHW: v.dependencyHW,
+      dependencySW: v.dependencySW,
+      asilLevel: v.asilLevel,
+      cyberR155: Boolean(v.cyberR155),
+      cyberNote: v.cyberNote,
+      dataCollected: v.dataCollected,
+      personalData: Boolean(v.personalData),
+      otaRollback: Boolean(v.otaRollback),
+      phasedRollout: Boolean(v.phasedRollout),
+      deptStatus,
+      investBand: v.investBand,
+      bepNote: v.bepNote,
+      devStartTarget: v.devStartTarget,
+      approvalRequest: v.approvalRequest,
     } as FeatureRequest;
   };
 
@@ -185,11 +215,17 @@ export function FeatureRequestPage() {
       regionScopeNote: r.regionScopeNote, desiredVehicle: r.desiredVehicle, deployType: r.deployType,
       targetSOP: r.targetSOP, businessModel: r.businessModel, volumeEstimate: r.volumeEstimate ? Number(r.volumeEstimate) : undefined,
       execDirectiveNote: r.execDirectiveNote,
+      category: r.category, priority: r.priority, metricBaseline: r.metricBaseline, metricTarget: r.metricTarget,
+      dependencyHW: r.dependencyHW, dependencySW: r.dependencySW, asilLevel: r.asilLevel,
+      cyberR155: r.cyberR155, cyberNote: r.cyberNote, dataCollected: r.dataCollected, personalData: r.personalData,
+      otaRollback: r.otaRollback, phasedRollout: r.phasedRollout,
+      investBand: r.investBand, bepNote: r.bepNote, devStartTarget: r.devStartTarget, approvalRequest: r.approvalRequest,
     });
     setNeedsSource(r.needsSource ?? NEEDS_SOURCES[0]);
     setApplyScope(r.applyScope ?? {});
     setApplySegments(r.applySegments ?? []);
     setRelatedDepts(r.relatedDepts ?? []);
+    setDeptStatus(r.deptStatus ?? {});
     setExecDirective(Boolean(r.execDirective));
     setAttachments(r.attachments ?? []);
     setDraft(r.id);
@@ -278,6 +314,7 @@ export function FeatureRequestPage() {
       setApplyScope(rec.applyScope);
       setApplySegments(rec.applySegments);
       setRelatedDepts(rec.relatedDepts);
+      setDeptStatus((prev) => { const n = { ...prev }; rec.relatedDepts.forEach((d) => { if (!n[d]) n[d] = "협의중"; }); return n; });
       form.setFieldsValue({
         regionScopeNote: rec.regionScopeNote,
         targetSOP: rec.targetSOP,
@@ -335,7 +372,7 @@ export function FeatureRequestPage() {
 
   const resetAll = () => {
     setSubmittedId(null); setStep(0); form.resetFields();
-    setApplyScope({}); setApplySegments([]); setRelatedDepts([]); setExecDirective(false);
+    setApplyScope({}); setApplySegments([]); setRelatedDepts([]); setDeptStatus({}); setExecDirective(false);
     setAttachments([]); setDraft(null); setAiIdea(""); setReview(null); setSummary(null); setDedup(null);
   };
 
@@ -456,7 +493,7 @@ export function FeatureRequestPage() {
 
       <Steps current={step} style={{ marginBottom: 20, maxWidth: 720 }} items={[{ title: "제안 개요·배경" }, { title: "기술 개요·운영안" }, { title: "유관부서·경영층" }]} />
 
-      <Form form={form} layout="vertical" disabled={!allowed} initialValues={{ deployType: "Binary OTA", targetSOP: "미정" }} requiredMark>
+      <Form form={form} layout="vertical" disabled={!allowed} initialValues={{ deployType: "Binary OTA", targetSOP: "미정", priority: "보통", asilLevel: "QM", investBand: "미정", devStartTarget: "미정", approvalRequest: "신규 등록 승인" }} requiredMark>
         {/* ── Step 1: 제안 개요 & 배경 ── */}
         <div style={{ display: step === 0 ? "block" : "none" }}>
           <Card title="제안 개요" style={{ marginBottom: 16 }}>
@@ -472,6 +509,18 @@ export function FeatureRequestPage() {
               <Col xs={24} md={14}>
                 <Form.Item name="requester" label="담당자">
                   <Input placeholder="담당자 이름을 입력하세요." />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} md={14}>
+                <Form.Item name="category" label="Feature 분류" tooltip="도메인 분류 — RG 게이트/오너 배정 기준">
+                  <Select placeholder="도메인 선택" allowClear options={CATEGORIES.map((c) => ({ value: c, label: c }))} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={10}>
+                <Form.Item name="priority" label="우선순위">
+                  <Select options={PRIORITIES.map((p) => ({ value: p, label: p }))} />
                 </Form.Item>
               </Col>
             </Row>
@@ -500,6 +549,18 @@ export function FeatureRequestPage() {
               <Col xs={24} md={12}>
                 <Form.Item name="expectedValue" label="기대효과">
                   <Input.TextArea rows={3} placeholder="상품성, 수익성, 안전성, 기타 고객 가치 등 다양한 관점(가능한 구체적 수치 제시)" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item name="metricBaseline" label="정량 근거 — 현재 지표" tooltip="현재 수준 (예: IQS 관련 불만 32건/1000대, NPS 28)">
+                  <Input placeholder="예) IQS 관련 불만 32건/1000대" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="metricTarget" label="정량 근거 — 목표 지표">
+                  <Input placeholder="예) 적용 후 18건/1000대 (-44%)" />
                 </Form.Item>
               </Col>
             </Row>
@@ -591,6 +652,66 @@ export function FeatureRequestPage() {
               </Card>
             </Col>
           </Row>
+
+          <Card title="적용 조건 · 안전 · 보안 · 데이터" style={{ marginTop: 16 }}>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item name="dependencyHW" label="필수 HW 의존성">
+                  <Input.TextArea rows={2} placeholder="필수 센서/제어기/통신 모듈 (예: 전방 카메라, ADAS ECU, C-V2X 모뎀)" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item name="dependencySW" label="최소 SW / 플랫폼">
+                  <Input.TextArea rows={2} placeholder="최소 SW 버전·플랫폼 (예: ccOS 3.x 이상, E-GMP)" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} md={8}>
+                <Form.Item name="asilLevel" label="기능안전 (ISO 26262)" tooltip="QM=안전무관, ASIL A~D=안전등급(D 최상)">
+                  <Select options={ASIL_LEVELS.map((v) => ({ value: v, label: v }))} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={16}>
+                <Form.Item label="사이버보안 (UNECE R155)" tooltip="해당 시 위협분석·대응(TARA) 개요">
+                  <Space.Compact style={{ width: "100%" }}>
+                    <Form.Item name="cyberR155" valuePropName="checked" noStyle>
+                      <Switch checkedChildren="R155 해당" unCheckedChildren="해당 없음" />
+                    </Form.Item>
+                    <Form.Item name="cyberNote" noStyle>
+                      <Input style={{ marginLeft: 10, width: "calc(100% - 110px)" }} placeholder="위협분석/대응 개요 (해당 시)" />
+                    </Form.Item>
+                  </Space.Compact>
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item label="데이터 / 개인정보" tooltip="수집 데이터 항목 및 개인정보 포함 여부 (GDPR/개인정보보호법)">
+                  <Space>
+                    <Form.Item name="personalData" valuePropName="checked" noStyle>
+                      <Switch checkedChildren="개인정보 포함" unCheckedChildren="비개인정보" />
+                    </Form.Item>
+                    <Form.Item name="dataCollected" noStyle>
+                      <Input style={{ width: 260 }} placeholder="수집 항목 (예: 위치, 주행로그)" />
+                    </Form.Item>
+                  </Space>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item label="OTA / 배포 특성">
+                  <Space size={20}>
+                    <Form.Item name="otaRollback" valuePropName="checked" noStyle>
+                      <Switch checkedChildren="롤백 가능" unCheckedChildren="롤백 불가" />
+                    </Form.Item>
+                    <Form.Item name="phasedRollout" valuePropName="checked" noStyle>
+                      <Switch checkedChildren="단계적(Wave)" unCheckedChildren="일괄 적용" />
+                    </Form.Item>
+                  </Space>
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
         </div>
 
         {/* ── Step 3: 유관 부서 & 경영층 지시사항 ── */}
@@ -604,8 +725,30 @@ export function FeatureRequestPage() {
               </Tooltip>
             }
           >
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>협의·검토가 필요한 유관 부서를 선택하세요.</div>
-            <ChipToggle options={RELATED_DEPTS} value={relatedDepts} onChange={setRelatedDepts} />
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>협의·검토가 필요한 유관 부서를 추가하고 협의 상태를 지정하세요.</div>
+            <Space wrap size={6} style={{ marginBottom: relatedDepts.length ? 14 : 0 }}>
+              {RELATED_DEPTS.filter((d) => !relatedDepts.includes(d)).map((d) => (
+                <Button key={d} size="small" onClick={() => { setRelatedDepts((p) => [...p, d]); setDeptStatus((s) => ({ ...s, [d]: "협의중" })); }}>+ {d}</Button>
+              ))}
+            </Space>
+            {relatedDepts.length > 0 && (
+              <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                {relatedDepts.map((d) => (
+                  <div key={d} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Tag color="#1f4e78" style={{ minWidth: 104, textAlign: "center", margin: 0 }}>{d}</Tag>
+                    <Select
+                      size="small"
+                      style={{ width: 120 }}
+                      value={deptStatus[d] ?? "협의중"}
+                      onChange={(v) => setDeptStatus((s) => ({ ...s, [d]: v }))}
+                      options={DEPT_STATUSES.map((st) => ({ value: st, label: st }))}
+                    />
+                    <Tag bordered={false} style={{ background: "transparent", color: DEPT_STATUS_COLOR[deptStatus[d] ?? "협의중"] }}>●</Tag>
+                    <Button size="small" type="text" danger onClick={() => { setRelatedDepts((p) => p.filter((x) => x !== d)); setDeptStatus((s) => { const n = { ...s }; delete n[d]; return n; }); }}>제거</Button>
+                  </div>
+                ))}
+              </Space>
+            )}
           </Card>
           <Card title="경영층 지시사항">
             <Space align="center" style={{ marginBottom: 12 }}>
@@ -618,6 +761,29 @@ export function FeatureRequestPage() {
               </Form.Item>
             )}
             {!execDirective && <div style={{ fontSize: 13, color: "#94a3b8" }}>해당 없음 — 일반 제안으로 접수됩니다.</div>}
+          </Card>
+
+          <Card title="사업성 · 승인 (LC0)" style={{ marginTop: 16 }}>
+            <Row gutter={16}>
+              <Col xs={24} md={8}>
+                <Form.Item name="investBand" label="개략 투자 규모">
+                  <Select options={INVEST_BANDS.map((v) => ({ value: v, label: v }))} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="devStartTarget" label="개발착수 목표">
+                  <Select options={SOP_OPTIONS.map((v) => ({ value: v, label: v }))} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="approvalRequest" label="승인 요청 결정" tooltip="이 제안으로 Intake(LC0)에 요청하는 결정">
+                  <Select options={APPROVAL_REQUESTS.map((v) => ({ value: v, label: v }))} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Form.Item name="bepNote" label="손익 / BEP 코멘트">
+              <Input.TextArea rows={2} placeholder="개략 손익·BEP·투자 회수 코멘트 (예: 옵션 장착률 15% 가정 시 3년 내 회수)" />
+            </Form.Item>
           </Card>
         </div>
 

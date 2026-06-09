@@ -30,6 +30,8 @@ function completenessOf(r: FeatureRequest) {
     ["기술 컨셉", Boolean(r.techConcept)],
     ["기대효과", Boolean(r.expectedValue)],
     ["유관 부서", Boolean(r.relatedDepts && r.relatedDepts.length)],
+    ["Feature 분류", Boolean(r.category)],
+    ["정량 목표", Boolean(r.metricTarget)],
   ];
   const missingReq = required.filter(([, ok]) => !ok).map(([k]) => k);
   const missingRec = recommended.filter(([, ok]) => !ok).map(([k]) => k);
@@ -168,7 +170,14 @@ export function IntakeReviewPage() {
             <Card size="small" title="② 제안 개요 · 배경">
               <Descriptions column={1} size="small" bordered>
                 {active.department && <Descriptions.Item label="제안 부서/담당자">{active.department} / {active.requester}</Descriptions.Item>}
+                {(active.category || active.priority) ? (
+                  <Descriptions.Item label="분류 / 우선순위">
+                    {active.category ? <Tag color="#1f4e78">{active.category}</Tag> : null}
+                    {active.priority ? <Tag color={active.priority === "긴급" ? "#b91c1c" : active.priority === "높음" ? "#b45309" : "default"}>{active.priority}</Tag> : null}
+                  </Descriptions.Item>
+                ) : null}
                 <Descriptions.Item label="고객 니즈">{active.customerNeeds || active.businessNeed}{active.needsSource ? <Tag style={{ marginLeft: 6 }}>{active.needsSource}</Tag> : null}</Descriptions.Item>
+                {(active.metricBaseline || active.metricTarget) ? <Descriptions.Item label="정량 근거">{active.metricBaseline || "—"} → <b>{active.metricTarget || "—"}</b></Descriptions.Item> : null}
                 {active.reviewBackground && <Descriptions.Item label="검토 배경">{active.reviewBackground}</Descriptions.Item>}
                 {active.devAgreement && <Descriptions.Item label="개발 협의">{active.devAgreement}</Descriptions.Item>}
                 {active.expectedValue && <Descriptions.Item label="기대효과">{active.expectedValue}</Descriptions.Item>}
@@ -205,21 +214,51 @@ export function IntakeReviewPage() {
               </Descriptions>
             </Card>
 
+            {/* 적용 조건·안전·보안·데이터 */}
+            {(active.dependencyHW || active.dependencySW || active.asilLevel || active.cyberR155 || active.dataCollected || active.personalData || active.otaRollback || active.phasedRollout) ? (
+              <Card size="small" title="⑤ 적용 조건 · 안전 · 보안 · 데이터">
+                <Descriptions column={1} size="small" bordered>
+                  {active.dependencyHW ? <Descriptions.Item label="필수 HW">{active.dependencyHW}</Descriptions.Item> : null}
+                  {active.dependencySW ? <Descriptions.Item label="최소 SW/플랫폼">{active.dependencySW}</Descriptions.Item> : null}
+                  {active.asilLevel ? <Descriptions.Item label="기능안전 (ISO 26262)"><Tag color={active.asilLevel === "QM" ? "default" : active.asilLevel >= "ASIL C" ? "#b91c1c" : "#b45309"}>{active.asilLevel}</Tag></Descriptions.Item> : null}
+                  <Descriptions.Item label="사이버보안 (R155)">{active.cyberR155 ? <Tag color="#b45309">해당 — {active.cyberNote || "TARA 필요"}</Tag> : <Tag>해당 없음</Tag>}</Descriptions.Item>
+                  <Descriptions.Item label="데이터/개인정보">{active.personalData ? <Tag color="#b91c1c">개인정보 포함</Tag> : <Tag color="#15803d">비개인정보</Tag>}{active.dataCollected ? <span style={{ marginLeft: 6 }}>{active.dataCollected}</span> : null}</Descriptions.Item>
+                  <Descriptions.Item label="OTA/배포">{active.otaRollback ? <Tag color="#15803d">롤백 가능</Tag> : <Tag color="#b45309">롤백 불가</Tag>}{active.phasedRollout ? <Tag color="#0891b2">단계적(Wave)</Tag> : <Tag>일괄</Tag>}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+            ) : null}
+
             {/* 유관 부서 · 경영층 */}
-            <Card size="small" title="⑤ 유관 부서 · 경영층 지시사항">
+            <Card size="small" title="⑥ 유관 부서 · 경영층 지시사항">
               <Space direction="vertical" size={8} style={{ width: "100%" }}>
-                <div>유관 부서: {active.relatedDepts && active.relatedDepts.length ? active.relatedDepts.map((d) => <Tag key={d} color="#1f4e78">{d}</Tag>) : <Tag>없음</Tag>}</div>
+                <div>유관 부서: {active.relatedDepts && active.relatedDepts.length ? active.relatedDepts.map((d) => {
+                  const st = active.deptStatus?.[d];
+                  const c = st === "완료" ? "#15803d" : st === "협의중" ? "#b45309" : "#1f4e78";
+                  return <Tag key={d} color={c}>{d}{st ? ` · ${st}` : ""}</Tag>;
+                }) : <Tag>없음</Tag>}</div>
                 <div>경영층 지시사항: {active.execDirective ? <Tag color="#b45309">Y — {active.execDirectiveNote}</Tag> : <Tag>N</Tag>}</div>
               </Space>
             </Card>
 
+            {/* 사업성 · 승인 */}
+            {(active.investBand || active.devStartTarget || active.approvalRequest || active.bepNote) ? (
+              <Card size="small" title="⑦ 사업성 · 승인 (LC0)">
+                <Descriptions column={1} size="small" bordered>
+                  {active.approvalRequest ? <Descriptions.Item label="승인 요청"><Tag color="#1f4e78">{active.approvalRequest}</Tag></Descriptions.Item> : null}
+                  {active.investBand ? <Descriptions.Item label="개략 투자">{active.investBand}</Descriptions.Item> : null}
+                  {active.devStartTarget ? <Descriptions.Item label="개발착수 목표">{active.devStartTarget}</Descriptions.Item> : null}
+                  {active.bepNote ? <Descriptions.Item label="손익/BEP">{active.bepNote}</Descriptions.Item> : null}
+                </Descriptions>
+              </Card>
+            ) : null}
+
             {/* Owner 지정 */}
-            <Card size="small" title="⑥ Owner Assignment (UI-006)">
+            <Card size="small" title="⑧ Owner Assignment (UI-006)">
               <OwnerAssignmentPanel owners={owners} editable={allowed} onChange={(k: OwnerRoleKey, v) => setOwners((o) => ({ ...o, [k]: v }))} />
             </Card>
 
             {/* 결정 */}
-            <Card size="small" title="⑦ Decision (LC0)">
+            <Card size="small" title="⑨ Decision (LC0)">
               <DecisionPanel
                 decisions={["APPROVE", "REWORK", "REJECT", "MERGE", "BACKLOG", "ESCALATE"]}
                 disabled={!allowed || active.status === "DRAFT" || TERMINAL.includes(active.status)}

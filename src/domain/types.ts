@@ -103,7 +103,32 @@ export interface FeatureRequest {
   execDirective?: boolean; // 경영층 지시사항 여부
   execDirectiveNote?: string; // 경영층 지시 내용
   attachments?: AttachmentMeta[]; // 근거/첨부 자료 (Mock: 메타데이터만 저장)
+
+  // ── Full 거버넌스 모듈 ──
+  // Step1
+  category?: string; // Feature 도메인 분류
+  priority?: string; // 우선순위
+  metricBaseline?: string; // 정량 근거 — 현재 지표
+  metricTarget?: string; // 정량 근거 — 목표 지표
+  // Step2 — 적용 조건·안전·보안·데이터
+  dependencyHW?: string; // 필수 HW (센서/제어기/통신)
+  dependencySW?: string; // 최소 SW/플랫폼
+  asilLevel?: string; // 기능안전 ISO 26262 (QM/A/B/C/D)
+  cyberR155?: boolean; // 사이버보안 UNECE R155 관련
+  cyberNote?: string; // 보안 비고
+  dataCollected?: string; // 수집 데이터 항목
+  personalData?: boolean; // 개인정보 포함
+  otaRollback?: boolean; // OTA 롤백 가능
+  phasedRollout?: boolean; // 단계적(Wave) 적용
+  // Step3 — 협의·사업성·승인
+  deptStatus?: Record<string, DeptStatus>; // 부서별 협의 상태
+  investBand?: string; // 개략 투자 규모
+  bepNote?: string; // 손익/BEP 코멘트
+  devStartTarget?: string; // 개발착수 목표 시점
+  approvalRequest?: string; // 승인 요청 결정 (LC0)
 }
+
+export type DeptStatus = "미요청" | "협의중" | "완료";
 
 export interface AttachmentMeta {
   uid: string;
