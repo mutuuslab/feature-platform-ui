@@ -1,7 +1,15 @@
 // AI task 설정 — 프롬프트 + 구조화 출력(JSON Schema). claude-opus-4-8 + structured outputs.
 // 프런트(src/data/aiProvider.ts)의 4개 task(draft/review/dedup/summarize)와 1:1 대응.
 
-export type AiTaskKey = "draft" | "review" | "dedup" | "summarize";
+export type AiTaskKey = "draft" | "review" | "dedup" | "summarize" | "recommend";
+
+// 추천 옵션 화이트리스트 (프런트 상수와 일치)
+const REGIONS = ["국내", "북미", "유럽", "중국", "일반"];
+const BRANDS = ["현대", "기아", "제네시스"];
+const SEGMENTS = ["경차/소형", "준중형", "중형", "대형/플래그십", "SUV/RV", "EV 전용", "상용/PBV"];
+const SOP_OPTIONS = ["'26 4Q", "'27 1Q", "'27 2Q", "'27 4Q", "'28 MY", "'29 MY", "미정"];
+const BIZ_MODELS = ["기본 탑재", "유상 옵션", "구독 (Subscription)", "FoD (Feature on Demand)"];
+const RELATED_DEPTS = ["Product", "System", "SW", "Release", "Operation", "AVP 개발", "MI", "기획", "품질", "구매", "Safety/Security"];
 
 interface TaskConfig {
   system: string;
@@ -99,6 +107,39 @@ export const AI_TASKS: Record<AiTaskKey, TaskConfig> = {
             properties: { id: strField, name: strField, kind: strField, similarity: { type: "number" }, reason: strField },
           },
         },
+      },
+    },
+  },
+
+  // 운영안·유관부서 자동 추천 (Step 2/3)
+  recommend: {
+    system:
+      "너는 자동차 OEM Feature 운영 기획 전문가다. 제안 맥락을 보고 운영안과 유관부서를 추천한다. " +
+      "반드시 허용된 값만 사용한다. 권역=[국내,북미,유럽,중국,일반], 브랜드=[현대,기아,제네시스]. " +
+      "현실적이고 보수적으로 권한다(과도한 전(全)권역/전(全)부서 지정 지양).",
+    user: (b) =>
+      `다음 제안 맥락을 보고 운영안을 추천하라.\n` +
+      `제안명: ${b.name ?? ""}\n아이디어: ${b.idea ?? ""}\n고객 니즈: ${b.customerNeeds ?? ""}\n기술 컨셉: ${b.techConcept ?? ""}\n유즈케이스: ${b.useCase ?? ""}\n` +
+      `applyScope(권역→브랜드[]), applySegments(차급), targetSOP(양산 시기), businessModel(과금), volumeEstimate(연간 대수, 정수), ` +
+      `desiredVehicle(희망 차종), relatedDepts(유관 부서), regionScopeNote(권역 협의 요약), rationale(추천 근거)를 한국어로 제시하라.`,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["regionScopeNote", "applyScope", "applySegments", "targetSOP", "businessModel", "volumeEstimate", "desiredVehicle", "relatedDepts", "rationale"],
+      properties: {
+        regionScopeNote: strField,
+        applyScope: {
+          type: "object",
+          additionalProperties: false,
+          properties: Object.fromEntries(REGIONS.map((r) => [r, { type: "array", items: { type: "string", enum: BRANDS } }])),
+        },
+        applySegments: { type: "array", items: { type: "string", enum: SEGMENTS } },
+        targetSOP: { type: "string", enum: SOP_OPTIONS },
+        businessModel: { type: "string", enum: BIZ_MODELS },
+        volumeEstimate: { type: "integer" },
+        desiredVehicle: strField,
+        relatedDepts: { type: "array", items: { type: "string", enum: RELATED_DEPTS } },
+        rationale: strField,
       },
     },
   },

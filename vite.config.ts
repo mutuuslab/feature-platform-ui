@@ -16,5 +16,7 @@ export default defineConfig(({ command }) => ({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    // 테스트는 항상 Mock 경로로 — 개발자 .env.local 의 VITE_API_URL 이 USE_BACKEND 를 켜지 않도록 무력화.
+    env: { VITE_API_URL: "" },
   },
 }));

@@ -5,7 +5,15 @@
 //   - 4개 task: draft(초안 보강) · review(완성도 검토) · dedup(중복 탐지) · summarize(요약)
 import { API_URL, USE_BACKEND } from "./apiConfig";
 
-export type AiTask = "draft" | "review" | "dedup" | "summarize";
+export type AiTask = "draft" | "review" | "dedup" | "summarize" | "recommend";
+
+// 추천 옵션 — FeatureRequestPage 의 상수와 동일하게 유지 (Mock 추천이 유효 값만 내도록).
+const REGIONS = ["국내", "북미", "유럽", "중국", "일반"];
+const BRANDS = ["현대", "기아", "제네시스"];
+const SEGMENTS = ["경차/소형", "준중형", "중형", "대형/플래그십", "SUV/RV", "EV 전용", "상용/PBV"];
+const SOP_OPTIONS = ["'26 4Q", "'27 1Q", "'27 2Q", "'27 4Q", "'28 MY", "'29 MY", "미정"];
+const BIZ_MODELS = ["기본 탑재", "유상 옵션", "구독 (Subscription)", "FoD (Feature on Demand)"];
+const RELATED_DEPTS = ["Product", "System", "SW", "Release", "Operation", "AVP 개발", "MI", "기획", "품질", "구매", "Safety/Security"];
 
 export interface DraftInput {
   name: string;
@@ -62,6 +70,26 @@ export interface SummarizeInput {
 export interface SummarizeResult {
   summary: string;
   bullets: string[];
+}
+
+// 운영안·유관부서 자동 추천 (Step 2/3)
+export interface RecommendInput {
+  name: string;
+  idea?: string;
+  customerNeeds?: string;
+  techConcept?: string;
+  useCase?: string;
+}
+export interface RecommendResult {
+  regionScopeNote: string;
+  applyScope: Record<string, string[]>;
+  applySegments: string[];
+  targetSOP: string;
+  businessModel: string;
+  volumeEstimate: number;
+  desiredVehicle: string;
+  relatedDepts: string[];
+  rationale: string;
 }
 
 /** AI 응답이 Mock(시뮬레이션)인지 실제 Claude인지 표시 — UI 배지용 */
@@ -223,9 +251,85 @@ function mockSummarize({ request }: SummarizeInput): SummarizeResult {
   };
 }
 
+// 운영안·유관부서 추천 — 작성 맥락(키워드) 기반 휴리스틱.
+function mockRecommend({ name, idea, customerNeeds, techConcept, useCase }: RecommendInput): RecommendResult {
+  const text = `${name} ${idea ?? ""} ${customerNeeds ?? ""} ${techConcept ?? ""} ${useCase ?? ""}`.toLowerCase();
+  const has = (...keys: string[]) => keys.some((k) => text.includes(k));
+
+  const isEV = has("ev", "전기", "전동", "충전", "배터리");
+  const isAdas = has("주차", "parking", "adas", "주행", "자율", "운전", "조향", "충돌", "차로");
+  const isConnected = has("커넥티드", "connected", "ota", "원격", "앱", "구독", "스트리밍", "클라우드", "서비스");
+  const isSafety = has("안전", "safety", "보안", "security", "긴급", "사고");
+  const isGlobal = has("글로벌", "유럽", "europe", "수출", "해외", "북미", "global");
+
+  // 적용 범위(권역×브랜드)
+  const applyScope: Record<string, string[]> = { 국내: ["현대", "기아"], 북미: ["현대"] };
+  if (isGlobal) applyScope["유럽"] = ["현대", "기아"];
+  if (isConnected || isAdas) applyScope["국내"] = ["현대", "기아", "제네시스"];
+
+  // 차급
+  const applySegments: string[] = [];
+  if (isEV) applySegments.push("EV 전용");
+  applySegments.push("중형", "SUV/RV");
+  if (isAdas || isConnected) applySegments.push("대형/플래그십");
+
+  // 과금 모델
+  const businessModel = isSafety ? "기본 탑재" : isConnected ? "구독 (Subscription)" : isAdas ? "유상 옵션" : "유상 옵션";
+
+  // 양산 시기 / 물량 / 희망 차종
+  const targetSOP = isAdas || isConnected ? "'27 4Q" : "'27 2Q";
+  const volumeEstimate = isSafety ? 250000 : isEV ? 80000 : 120000;
+  const desiredVehicle = isEV ? "신형 전용 전기차(E-GMP)" : isAdas ? "신형 SUV / 플래그십 세단" : "주력 중형 세단";
+
+  // 유관 부서
+  const depts = new Set<string>(["Product", "System", "SW", "Release", "Operation", "품질"]);
+  if (isAdas) ["AVP 개발", "Safety/Security"].forEach((d) => depts.add(d));
+  if (isSafety) depts.add("Safety/Security");
+  if (isConnected) ["AVP 개발", "구매"].forEach((d) => depts.add(d));
+  if (isGlobal) depts.add("기획");
+  const relatedDepts = RELATED_DEPTS.filter((d) => depts.has(d)); // 정의 순서 유지
+
+  const tag = isEV ? "전동화" : isAdas ? "ADAS/주행" : isConnected ? "커넥티드" : "일반";
+  const regionScopeNote =
+    `국내(현대·기아) 우선 적용 후 북미 확대${isGlobal ? ", 유럽은 법규 검토 후 2차" : ""}. ` +
+    `${tag} 성격을 반영한 권역·브랜드 추천 — 근거 자료 별도 첨부 권장.`;
+
+  return {
+    regionScopeNote,
+    applyScope,
+    applySegments: [...new Set(applySegments)].filter((s) => SEGMENTS.includes(s)),
+    targetSOP: SOP_OPTIONS.includes(targetSOP) ? targetSOP : "미정",
+    businessModel: BIZ_MODELS.includes(businessModel) ? businessModel : "유상 옵션",
+    volumeEstimate,
+    desiredVehicle,
+    relatedDepts,
+    rationale: `'${tag}' 맥락으로 판단 — 적용 권역/차급, 과금(${businessModel}), 유관부서(${relatedDepts.length}개)를 추천했습니다. 값은 자유롭게 수정하세요.`,
+  };
+}
+
+// 권역/브랜드 화이트리스트 정제 (백엔드 응답 방어)
+function sanitizeScope(scope: Record<string, string[]> | undefined): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [r, brands] of Object.entries(scope ?? {})) {
+    if (REGIONS.includes(r) && Array.isArray(brands)) {
+      const valid = brands.filter((b) => BRANDS.includes(b));
+      if (valid.length) out[r] = valid;
+    }
+  }
+  return out;
+}
+
 // ──────────────────────────────────────────────────────────────
 // 공개 API — task별 호출. 백엔드 연결 시 실제 Claude, 아니면 Mock.
 // ──────────────────────────────────────────────────────────────
+export async function aiRecommend(input: RecommendInput): Promise<RecommendResult> {
+  if (USE_BACKEND) {
+    const r = await callBackend<RecommendResult>("recommend", input);
+    return { ...r, applyScope: sanitizeScope(r.applyScope) };
+  }
+  await delay(650);
+  return mockRecommend(input);
+}
 export async function aiDraft(input: DraftInput): Promise<DraftResult> {
   if (USE_BACKEND) return callBackend<DraftResult>("draft", input);
   await delay(750);

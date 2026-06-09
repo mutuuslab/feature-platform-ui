@@ -16,7 +16,7 @@ import type { AttachmentMeta, Feature, FeatureRequest } from "../domain/types";
 import { DataQualityBanner, PageHeader } from "../components/Common";
 import { useRole } from "../auth/RoleContext";
 import {
-  aiDraft, aiReview, aiDedup, aiSummarize, aiMode,
+  aiDraft, aiReview, aiDedup, aiSummarize, aiRecommend, aiMode,
   type ReviewResult, type DedupResult, type SummarizeResult,
 } from "../data/aiProvider";
 
@@ -118,6 +118,7 @@ export function FeatureRequestPage() {
   const [summary, setSummary] = useState<SummarizeResult | null>(null);
   const [dedupBusy, setDedupBusy] = useState(false);
   const [dedup, setDedup] = useState<DedupResult | null>(null);
+  const [recBusy, setRecBusy] = useState(false);
   const mode = aiMode();
 
   // 이어쓰기 가능한 임시저장 목록
@@ -260,6 +261,35 @@ export function FeatureRequestPage() {
       message.error(`중복 탐지 실패: ${(e as Error).message}`);
     } finally {
       setDedupBusy(false);
+    }
+  };
+
+  // ── AI: 운영안·유관부서 추천 (Step 2/3) — 작성 맥락 기반 자동 채움 ──
+  const runRecommend = async () => {
+    const name = form.getFieldValue("name") || aiIdea.trim();
+    if (!name) {
+      message.warning("제안명 또는 아이디어를 먼저 입력하세요. (제안 개요·배경부터 작성)");
+      return;
+    }
+    setRecBusy(true);
+    try {
+      const v = form.getFieldsValue(true);
+      const rec = await aiRecommend({ name, idea: aiIdea.trim(), customerNeeds: v.customerNeeds, techConcept: v.techConcept, useCase: v.useCase });
+      setApplyScope(rec.applyScope);
+      setApplySegments(rec.applySegments);
+      setRelatedDepts(rec.relatedDepts);
+      form.setFieldsValue({
+        regionScopeNote: rec.regionScopeNote,
+        targetSOP: rec.targetSOP,
+        businessModel: rec.businessModel,
+        volumeEstimate: rec.volumeEstimate,
+        desiredVehicle: rec.desiredVehicle,
+      });
+      message.success(rec.rationale);
+    } catch (e) {
+      message.error(`추천 실패: ${(e as Error).message}`);
+    } finally {
+      setRecBusy(false);
     }
   };
 
@@ -493,7 +523,15 @@ export function FeatureRequestPage() {
               </Card>
             </Col>
             <Col xs={24} lg={12}>
-              <Card title="운영안" style={{ height: "100%" }}>
+              <Card
+                title="운영안"
+                style={{ height: "100%" }}
+                extra={
+                  <Tooltip title="제안 맥락을 보고 적용 범위·차급·SOP·과금 모델·예상 대수·희망 차종을 자동 추천합니다.">
+                    <Button size="small" type="primary" ghost icon={<RobotOutlined />} loading={recBusy} onClick={runRecommend}>AI 추천</Button>
+                  </Tooltip>
+                }
+              >
                 <Form.Item name="regionScopeNote" label="권역 협의 범위" tooltip="협의된 권역과 그 근거. 상세 근거는 아래 '근거 자료'에 첨부">
                   <Input.TextArea rows={2} placeholder="예) 국내·북미 우선 적용, 유럽은 법규 검토 후 2차 — 권역별 협의 결과 요약" />
                 </Form.Item>
@@ -557,7 +595,15 @@ export function FeatureRequestPage() {
 
         {/* ── Step 3: 유관 부서 & 경영층 지시사항 ── */}
         <div style={{ display: step === 2 ? "block" : "none" }}>
-          <Card title="유관 부서" style={{ marginBottom: 16 }}>
+          <Card
+            title="유관 부서"
+            style={{ marginBottom: 16 }}
+            extra={
+              <Tooltip title="제안 맥락 기반으로 협의가 필요한 유관 부서를 추천합니다.">
+                <Button size="small" type="primary" ghost icon={<RobotOutlined />} loading={recBusy} onClick={runRecommend}>AI 추천</Button>
+              </Tooltip>
+            }
+          >
             <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>협의·검토가 필요한 유관 부서를 선택하세요.</div>
             <ChipToggle options={RELATED_DEPTS} value={relatedDepts} onChange={setRelatedDepts} />
           </Card>

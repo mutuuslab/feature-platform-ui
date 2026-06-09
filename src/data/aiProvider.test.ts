@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiDraft, aiReview, aiDedup, aiSummarize } from "./aiProvider";
+import { aiDraft, aiReview, aiDedup, aiSummarize, aiRecommend } from "./aiProvider";
 
 // USE_BACKEND 가 false(기본 테스트 환경)이므로 Mock 경로를 검증한다.
 describe("AI 어시스트 Mock provider", () => {
@@ -46,5 +46,21 @@ describe("AI 어시스트 Mock provider", () => {
     const s = await aiSummarize({ request: { name: "원격 주차", applyScope: { 국내: ["현대"] }, deployType: "Binary OTA" } });
     expect(s.summary).toContain("원격 주차");
     expect(s.bullets.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("recommend: 맥락 기반으로 유효한 운영안/유관부서를 추천한다", async () => {
+    const SEGMENTS = ["경차/소형", "준중형", "중형", "대형/플래그십", "SUV/RV", "EV 전용", "상용/PBV"];
+    const BRANDS = ["현대", "기아", "제네시스"];
+    const rec = await aiRecommend({ name: "원격 주차 보조", idea: "ADAS 주차, 안전 관련" });
+    // 적용 범위는 유효 권역/브랜드만
+    for (const [region, brands] of Object.entries(rec.applyScope)) {
+      expect(["국내", "북미", "유럽", "중국", "일반"]).toContain(region);
+      brands.forEach((b) => expect(BRANDS).toContain(b));
+    }
+    rec.applySegments.forEach((s) => expect(SEGMENTS).toContain(s));
+    expect(rec.relatedDepts.length).toBeGreaterThan(0);
+    // ADAS·안전 맥락이면 Safety/Security 가 추천되어야 한다
+    expect(rec.relatedDepts).toContain("Safety/Security");
+    expect(typeof rec.volumeEstimate).toBe("number");
   });
 });
