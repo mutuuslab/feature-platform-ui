@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, useEffect, type ComponentType } from "react";
 import { Refine } from "@refinedev/core";
 import { useNotificationProvider } from "@refinedev/antd";
 import routerProvider from "@refinedev/react-router";
@@ -17,41 +17,42 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { AppShell } from "./components/AppShell";
 
-import { DashboardPage } from "./pages/DashboardPage";
-import { FeatureRequestPage } from "./pages/FeatureRequestPage";
-import { IntakeReviewPage } from "./pages/IntakeReviewPage";
-import { RegistryListPage } from "./pages/RegistryListPage";
-import { FeatureDetailPage } from "./pages/FeatureDetailPage";
-import { LifecycleDashboardPage } from "./pages/LifecycleDashboardPage";
-import { GateTrackerPage } from "./pages/GateTrackerPage";
-import { GateEvidencePage } from "./pages/GateEvidencePage";
-import { SupplierPortalPage } from "./pages/SupplierPortalPage";
-import { ReleaseReadinessPage } from "./pages/ReleaseReadinessPage";
-import { OperationsPage } from "./pages/OperationsPage";
-import { AuditLogPage } from "./pages/AuditLogPage";
-import { TraceabilityPage } from "./pages/TraceabilityPage";
-import { AdminRbacPage } from "./pages/AdminRbacPage";
-import { FleetControlPage } from "./pages/FleetControlPage";
-import { KpiCommandPage } from "./pages/KpiCommandPage";
-import { GoLiveDecisionPage } from "./pages/GoLiveDecisionPage";
-import { TargetingPage } from "./pages/TargetingPage";
-import { MultiRolloutPage } from "./pages/MultiRolloutPage";
-import {
-  ProductScopePage,
-  RequirementsPage,
-  SafetySecurityPage,
-  SwApiPage,
-  ControlRuntimePage,
-  VerificationPage,
-  OtaPage,
-  FieldOpsPage,
-  RetirementPage,
-  GovernanceDataPage,
-  ArchitecturePage,
-  LaunchAdoptionPage,
-  OperatingModelPage,
-  OpsControlPage,
-} from "./pages/workbenches";
+// 라우트 페이지는 코드 스플리팅 (React.lazy) — 초기 번들에서 제외, 진입 시 청크 로드.
+const named = (p: Promise<Record<string, unknown>>, key: string) => p.then((m) => ({ default: m[key] as ComponentType }));
+
+const DashboardPage = lazy(() => named(import("./pages/DashboardPage"), "DashboardPage"));
+const FeatureRequestPage = lazy(() => named(import("./pages/FeatureRequestPage"), "FeatureRequestPage"));
+const IntakeReviewPage = lazy(() => named(import("./pages/IntakeReviewPage"), "IntakeReviewPage"));
+const RegistryListPage = lazy(() => named(import("./pages/RegistryListPage"), "RegistryListPage"));
+const FeatureDetailPage = lazy(() => named(import("./pages/FeatureDetailPage"), "FeatureDetailPage"));
+const LifecycleDashboardPage = lazy(() => named(import("./pages/LifecycleDashboardPage"), "LifecycleDashboardPage"));
+const GateTrackerPage = lazy(() => named(import("./pages/GateTrackerPage"), "GateTrackerPage"));
+const GateEvidencePage = lazy(() => named(import("./pages/GateEvidencePage"), "GateEvidencePage"));
+const SupplierPortalPage = lazy(() => named(import("./pages/SupplierPortalPage"), "SupplierPortalPage"));
+const ReleaseReadinessPage = lazy(() => named(import("./pages/ReleaseReadinessPage"), "ReleaseReadinessPage"));
+const OperationsPage = lazy(() => named(import("./pages/OperationsPage"), "OperationsPage"));
+const AuditLogPage = lazy(() => named(import("./pages/AuditLogPage"), "AuditLogPage"));
+const TraceabilityPage = lazy(() => named(import("./pages/TraceabilityPage"), "TraceabilityPage"));
+const AdminRbacPage = lazy(() => named(import("./pages/AdminRbacPage"), "AdminRbacPage"));
+const FleetControlPage = lazy(() => named(import("./pages/FleetControlPage"), "FleetControlPage"));
+const KpiCommandPage = lazy(() => named(import("./pages/KpiCommandPage"), "KpiCommandPage"));
+const GoLiveDecisionPage = lazy(() => named(import("./pages/GoLiveDecisionPage"), "GoLiveDecisionPage"));
+const TargetingPage = lazy(() => named(import("./pages/TargetingPage"), "TargetingPage"));
+const MultiRolloutPage = lazy(() => named(import("./pages/MultiRolloutPage"), "MultiRolloutPage"));
+const ProductScopePage = lazy(() => named(import("./pages/workbenches"), "ProductScopePage"));
+const RequirementsPage = lazy(() => named(import("./pages/workbenches"), "RequirementsPage"));
+const SafetySecurityPage = lazy(() => named(import("./pages/workbenches"), "SafetySecurityPage"));
+const SwApiPage = lazy(() => named(import("./pages/workbenches"), "SwApiPage"));
+const ControlRuntimePage = lazy(() => named(import("./pages/workbenches"), "ControlRuntimePage"));
+const VerificationPage = lazy(() => named(import("./pages/workbenches"), "VerificationPage"));
+const OtaPage = lazy(() => named(import("./pages/workbenches"), "OtaPage"));
+const FieldOpsPage = lazy(() => named(import("./pages/workbenches"), "FieldOpsPage"));
+const RetirementPage = lazy(() => named(import("./pages/workbenches"), "RetirementPage"));
+const GovernanceDataPage = lazy(() => named(import("./pages/workbenches"), "GovernanceDataPage"));
+const ArchitecturePage = lazy(() => named(import("./pages/workbenches"), "ArchitecturePage"));
+const LaunchAdoptionPage = lazy(() => named(import("./pages/workbenches"), "LaunchAdoptionPage"));
+const OperatingModelPage = lazy(() => named(import("./pages/workbenches"), "OperatingModelPage"));
+const OpsControlPage = lazy(() => named(import("./pages/workbenches"), "OpsControlPage"));
 
 export default function App() {
   return (

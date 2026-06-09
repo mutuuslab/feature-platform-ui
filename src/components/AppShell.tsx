@@ -1,6 +1,6 @@
 // CMP-001 AppShell — Mission-Control 셸 + 역할 기반 그룹 네비게이션 (시트 35, 23).
-import { useEffect, useMemo, useState } from "react";
-import { Avatar, Button, Layout, Menu, Select, Tag, Tooltip, Typography } from "antd";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { Avatar, Button, Layout, Menu, Select, Spin, Tag, Tooltip, Typography } from "antd";
 import { BulbOutlined, LogoutOutlined, MoonOutlined } from "@ant-design/icons";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { ROLES } from "../auth/rbac";
@@ -106,7 +106,9 @@ export function AppShell() {
         </Header>
         <Content className="fp-canvas">
           <div style={{ maxWidth: tokens.layout.contentMaxWidth, margin: "0 auto", padding: 24 }}>
-            <Outlet />
+            <Suspense fallback={<div style={{ display: "grid", placeItems: "center", minHeight: "60vh" }}><Spin size="large" tip="로딩 중…"><div style={{ padding: 50 }} /></Spin></div>}>
+              <Outlet />
+            </Suspense>
           </div>
         </Content>
       </Layout>
