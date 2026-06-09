@@ -36,10 +36,6 @@ export function LoginPage() {
             로그인
           </Button>
         </Form>
-
-        <div style={{ marginTop: 18, textAlign: "center", color: "#9fb6d1", fontSize: 12 }}>
-          데모 계정 — <span className="fp-mono" style={{ color: "#cfe0ec" }}>admin / admin</span>
-        </div>
       </div>
       <div style={{ position: "absolute", bottom: 16, color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Vehicle Feature Lifecycle — Mission Control · Demo</div>
     </div>
