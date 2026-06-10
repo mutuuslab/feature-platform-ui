@@ -108,6 +108,7 @@ function genId(resource: ResourceName): string {
     defects: "DEF",
     releaseCandidates: "RC",
     flagStates: "FLAG",
+    workbenchItems: "WB",
   };
   return `${prefix[resource]}-${counter}`;
 }

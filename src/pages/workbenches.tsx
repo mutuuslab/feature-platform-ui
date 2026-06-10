@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { Workbench, type WbTab } from "../components/Workbench";
 import { store, useList, useMutate } from "../data/useStore";
 import type { FieldIssueRecord } from "../data/population";
-import type { DefectRecord, Feature, Gate, ReleaseCandidateRecord, RequirementRecord, TestRunRecord } from "../domain/types";
+import type { DefectRecord, Feature, Gate, ReleaseCandidateRecord, RequirementRecord, TestRunRecord, WorkbenchItemRecord } from "../domain/types";
 import { derivedLifecycleStatus } from "../domain/gateLogic";
 import { useRole } from "../auth/RoleContext";
 
@@ -435,12 +435,21 @@ const LAUNCH_TABS: WbTab[] = [
   },
 ];
 
-export const ArchitecturePage = () => <Workbench title="Engineering & Architecture" subtitle="시트 28/45 · API Contract Catalog · Event & Workflow Design" icon="🧩" tabs={ARCH_TABS} />;
-export const LaunchAdoptionPage = () => <Workbench title="Launch & Adoption" subtitle="시트 51/52/55 · Pilot Scope · Migration/Cutover · Hypercare Runbook" icon="🚩" tabs={LAUNCH_TABS} />;
-
-export const ProductScopePage = () => <Workbench title="Product & Scope" subtitle="UI-013/014 · 상품 전략·가격·적용 범위" icon="💲" tabs={PRODUCT_TABS} />;
-export const SwApiPage = () => <Workbench title="SW & API" subtitle="UI-021/022/023 · Component·API Contract·Dependency" icon="🔌" tabs={SWAPI_TABS} />;
-export const ControlRuntimePage = () => <Workbench title="Control & Runtime" subtitle="UI-024/025/027 · Policy·Context·Simulation" icon="⚙️" tabs={CONTROL_TABS} />;
+export function ArchitecturePage() {
+  return <Workbench title="Engineering & Architecture" subtitle="시트 28/45 · API Contract Catalog · Event & Workflow Design" icon="🧩" tabs={ARCH_TABS} customTabs={[useWbLiveTab("arch", "API/Event 작업")]} />;
+}
+export function LaunchAdoptionPage() {
+  return <Workbench title="Launch & Adoption" subtitle="시트 51/52/55 · Pilot Scope · Migration/Cutover · Hypercare Runbook" icon="🚩" tabs={LAUNCH_TABS} customTabs={[useWbLiveTab("launch", "Pilot/Migration 작업")]} />;
+}
+export function ProductScopePage() {
+  return <Workbench title="Product & Scope" subtitle="UI-013/014 · 상품 전략·가격·적용 범위" icon="💲" tabs={PRODUCT_TABS} customTabs={[useWbLiveTab("product", "Pricing/Scope 승인")]} />;
+}
+export function SwApiPage() {
+  return <Workbench title="SW & API" subtitle="UI-021/022/023 · Component·API Contract·Dependency" icon="🔌" tabs={SWAPI_TABS} customTabs={[useWbLiveTab("swapi", "API/Component 작업")]} />;
+}
+export function ControlRuntimePage() {
+  return <Workbench title="Control & Runtime" subtitle="UI-024/025/027 · Policy·Context·Simulation" icon="⚙️" tabs={CONTROL_TABS} customTabs={[useWbLiveTab("control", "Policy 작업")]} />;
+}
 
 // ── Phase 2 심화: store 연동 Live 탭 헬퍼 ──
 const asilColor = (a: string) => (a === "ASIL D" ? "#b91c1c" : a === "ASIL C" ? "#c2410c" : a === "ASIL B" ? "#b45309" : a === "ASIL A" ? "#ca8a04" : "#64748b");
@@ -450,6 +459,55 @@ const DEF_SEV: Record<string, string> = { Blocker: "#b91c1c", Major: "#b45309", 
 const DEF_COLOR: Record<string, string> = { OPEN: "#b45309", FIXED: "#0891b2", VERIFIED: "#15803d" };
 const RC_COLOR: Record<string, string> = { DRAFT: "#64748b", FROZEN: "#b45309", DEPLOYED: "#15803d", ROLLED_BACK: "#b91c1c" };
 const ENV_COLOR: Record<string, string> = { dev: "#64748b", qa: "#b45309", prod: "#15803d" };
+
+// ── 정적 워크벤치 9종 → store 연동 Live 탭(단계 전이 + audit) ──
+const WB_FLOW: Record<string, string[]> = {
+  product: ["가격검토", "승인완료"],
+  swapi: ["설계", "리뷰", "배포"],
+  control: ["초안", "활성", "폐기"],
+  arch: ["초안", "검증", "승인"],
+  retire: ["영향분석", "승인대기", "종료승인"],
+  gov: ["접수", "검토", "승인"],
+  operating: ["TODO", "진행", "완료"],
+  opsctl: ["FIRING", "ACK", "RESOLVED"],
+  launch: ["미착수", "진행", "완료"],
+};
+const WB_COLOR: Record<string, string> = {
+  승인완료: "#15803d", 배포: "#15803d", 승인: "#15803d", 종료승인: "#15803d", 완료: "#15803d", RESOLVED: "#15803d", 활성: "#15803d",
+  리뷰: "#0891b2", 검증: "#0891b2", 진행: "#0891b2", 검토: "#0891b2", ACK: "#0891b2", 승인대기: "#b45309",
+  FIRING: "#b91c1c", 폐기: "#b91c1c",
+};
+const wbColor = (s: string) => WB_COLOR[s] ?? "#64748b";
+
+function useWbLiveTab(page: string, label: string) {
+  const items = useList<WorkbenchItemRecord>("workbenchItems").filter((i) => i.page === page);
+  const mutate = useMutate();
+  const { userName } = useRole();
+  const flow = WB_FLOW[page] ?? ["TODO", "진행", "완료"];
+  const advance = (it: WorkbenchItemRecord) => {
+    const next = flow[(flow.indexOf(it.status) + 1) % flow.length];
+    mutate(() => {
+      store.update<WorkbenchItemRecord>("workbenchItems", it.id, { status: next });
+      store.audit({ actor: userName, action: `WB_${page.toUpperCase()}_${next}`, objectType: "WorkbenchItem", objectId: it.id, before: it.status, after: next });
+    });
+  };
+  const done = flow[flow.length - 1];
+  return {
+    key: `live-${page}`,
+    label: <span>⚡ {label} ({items.filter((i) => i.status !== done).length} open)</span>,
+    children: items.length ? (
+      <Table<WorkbenchItemRecord> rowKey="id" dataSource={items} pagination={false} scroll={{ x: "max-content" }}
+        columns={[
+          { title: "분류", dataIndex: "group", render: (v) => <Tag>{v}</Tag> },
+          { title: "항목", dataIndex: "title" },
+          { title: "메타", dataIndex: "sub", render: (v) => <span style={{ fontSize: 12, color: "#64748b" }}>{v ?? ""}</span> },
+          { title: "Owner", dataIndex: "owner", render: (v) => v ?? "—" },
+          { title: "Status", dataIndex: "status", render: (v) => <Tag color={wbColor(v)}>{v}</Tag> },
+          { title: "Action", render: (_, it) => <Button size="small" type="primary" ghost onClick={() => advance(it)}>다음 단계 →</Button> },
+        ]} />
+    ) : <Empty description="항목 없음" />,
+  };
+}
 
 // Requirements & System — Live Requirement Editor (store)
 export function RequirementsPage() {
@@ -682,8 +740,12 @@ export const FieldOpsPage = () => {
 
   return <Workbench title="Field Operations" subtitle="UI-044/045/031/047 · Alert·Field Issue·CAPA·Entitlement (RG9)" icon="🔧" tabs={FIELD_TABS} customTabs={[liveTab]} />;
 };
-export const RetirementPage = () => <Workbench title="Deprecation & Retirement" subtitle="UI-048/049 · 영향 분석·종료 승인 (LC10)" icon="📦" tabs={RETIRE_TABS} />;
-export const GovernanceDataPage = () => <Workbench title="Governance & Data" subtitle="UI-010/011/051/052/054/056 · Baseline·Change·Code·Task·Integration·Import" icon="🗄" tabs={GOV_TABS} />;
+export function RetirementPage() {
+  return <Workbench title="Deprecation & Retirement" subtitle="UI-048/049 · 영향 분석·종료 승인 (LC10)" icon="📦" tabs={RETIRE_TABS} customTabs={[useWbLiveTab("retire", "Deprecation/Retire 결정")]} />;
+}
+export function GovernanceDataPage() {
+  return <Workbench title="Governance & Data" subtitle="UI-010/011/051/052/054/056 · Baseline·Change·Code·Task·Integration·Import" icon="🗄" tabs={GOV_TABS} customTabs={[useWbLiveTab("gov", "Change Request/Baseline")]} />;
+}
 
 // ── Operating Model & Adoption (시트 53/54/56/57/58) ──
 const OPERATING_TABS: WbTab[] = [
@@ -842,5 +904,9 @@ const OPSCTL_TABS: WbTab[] = [
   },
 ];
 
-export const OperatingModelPage = () => <Workbench title="Operating Model & Adoption" subtitle="시트 53/54/56/57/58 · Governance·Training·Comms·Backlog·Scorecard" icon="🏛" tabs={OPERATING_TABS} />;
-export const OpsControlPage = () => <Workbench title="Operations Control Pack" subtitle="시트 62/63/65 · Alert/Escalation·KPI Data Lineage·Readiness" icon="🎛" tabs={OPSCTL_TABS} />;
+export function OperatingModelPage() {
+  return <Workbench title="Operating Model & Adoption" subtitle="시트 53/54/56/57/58 · Governance·Training·Comms·Backlog·Scorecard" icon="🏛" tabs={OPERATING_TABS} customTabs={[useWbLiveTab("operating", "Backlog/Training 작업")]} />;
+}
+export function OpsControlPage() {
+  return <Workbench title="Operations Control Pack" subtitle="시트 62/63/65 · Alert/Escalation·KPI Data Lineage·Readiness" icon="🎛" tabs={OPSCTL_TABS} customTabs={[useWbLiveTab("opsctl", "Alert 처리")]} />;
+}

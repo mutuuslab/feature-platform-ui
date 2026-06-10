@@ -253,6 +253,17 @@ export interface FlagStateRecord {
   lastSyncAt?: string;
 }
 
+// 워크벤치 공통 작업/항목(스펙 뷰를 상호작용형으로 — store 연동 Live 탭). page로 화면 구분, status 단계 전이.
+export interface WorkbenchItemRecord {
+  id: string;
+  page: string; // product | swapi | control | arch | retire | gov | operating | opsctl | launch
+  group: string; // 탭/분류 라벨
+  title: string;
+  sub?: string; // 보조 설명/메타
+  owner?: string;
+  status: string; // page별 STATUS_FLOW 단계
+}
+
 export interface AuditLog {
   id: string;
   actor: string;

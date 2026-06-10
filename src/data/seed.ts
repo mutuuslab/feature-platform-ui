@@ -13,6 +13,7 @@ import type {
   RequirementRecord,
   SupplierWorkPackage,
   TestRunRecord,
+  WorkbenchItemRecord,
 } from "../domain/types";
 import { GATES } from "../domain/codeMaster";
 import { buildVehicles, type ActivationRecord, type EligibilityRuleRecord, type EligibilityVersionRecord, type FieldIssueRecord, type VehicleRecord } from "./population";
@@ -51,6 +52,7 @@ export interface SeedData {
   defects: DefectRecord[];
   releaseCandidates: ReleaseCandidateRecord[];
   flagStates: FlagStateRecord[];
+  workbenchItems: WorkbenchItemRecord[];
 }
 
 export function buildSeed(): SeedData {
@@ -226,5 +228,45 @@ export function buildSeed(): SeedData {
     { id: "FEAT-ALK-002", flagKey: "feature_alk_002", envs: { dev: { enabled: true, rollout: 100 }, qa: { enabled: true, rollout: 50 }, prod: off }, constraintsSummary: "region ∈ {US, KR}", lastSyncAt: now },
   ];
 
-  return { features, featureRequests, gates, evidence, supplierWorkPackages, releasePlans, auditLogs, vehicles: buildVehicles(), eligibilityRules: [], eligibilityHistory: [], activations: [], fieldIssues: [], requirements, tests, defects, releaseCandidates, flagStates };
+  const wb = (page: string, group: string, title: string, status: string, sub?: string, owner?: string): WorkbenchItemRecord =>
+    ({ id: `WB-${page.toUpperCase()}-${title.replace(/[^A-Za-z0-9]+/g, "").slice(0, 8)}-${Math.abs([...title].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) % 9000 + 1000}`, page, group, title, status, sub, owner });
+  const workbenchItems: WorkbenchItemRecord[] = [
+    // Product & Scope
+    wb("product", "Pricing", "FEAT-DST-003 · Subscription $9.9/mo", "승인완료", "Performance 패키지", "Product Owner"),
+    wb("product", "Pricing", "FEAT-RPA-001 · One-time $299", "가격검토", "Convenience 패키지", "Product Owner"),
+    wb("product", "Scope", "FEAT-RPA-001 · KR·EU / Premium", "가격검토", "MY26, ADAS Lv2+", "System Owner"),
+    // SW & API
+    wb("swapi", "API", "API-RPA-01 · POST /park/start", "배포", "mTLS+OAuth, v2", "SW Owner"),
+    wb("swapi", "API", "API-RPA-02 · GET /park/status", "리뷰", "mTLS, v2", "SW Owner"),
+    wb("swapi", "Component", "CMP-APP-02 · mobile-app v1.4.2", "설계", "W. Software", "SW Owner"),
+    // Control & Runtime
+    wb("control", "Policy", "POL-RPA-01 · parked && entitled && region∈scope", "활성", "Safe default: Disabled", "System Owner"),
+    wb("control", "Policy", "POL-DST-01 · subscription.active", "활성", "Safe default: Standard", "System Owner"),
+    wb("control", "Policy", "POL-RPA-02 · offline 안전정지", "초안", "검증 전", "System Owner"),
+    // Architecture
+    wb("arch", "API Contract", "API-007 · Register Official Feature", "승인", "POST /api/features/register", "PMO/Product"),
+    wb("arch", "API Contract", "API-021 · Validate API Contract", "검증", "POST /api/api-contracts/{id}/validate", "SW/Supplier"),
+    wb("arch", "Event", "EVT-012 · KillSwitchActivated", "초안", "Policy Service", "Release Owner"),
+    // Retirement
+    wb("retire", "Deprecation", "FEAT-LEGACY-12 · 활성 84,200대", "영향분석", "대체: FEAT-DST-003", "Operation Owner"),
+    wb("retire", "Retirement", "FEAT-LEGACY-09 · 활성 0대", "종료승인", "7년 보관, Cold storage", "Operation Owner"),
+    // Governance & Data
+    wb("gov", "Change Request", "CR-2026-201 · API v2→v3", "검토", "영향 게이트 RG4/RG6", "PMO"),
+    wb("gov", "Change Request", "CR-2026-198 · EU 지역 확대", "승인", "영향 게이트 RG3", "PMO"),
+    wb("gov", "Baseline", "BL-ALK-002-v3 · Req+API+Test", "접수", "Lock 대기", "PMO"),
+    // Operating Model
+    wb("operating", "Backlog", "Guided request wizard", "진행", "Pilot feedback · High adoption", "PMO"),
+    wb("operating", "Backlog", "Rollback readiness blocker", "TODO", "Release simulation · Critical", "Release Owner"),
+    wb("operating", "Training", "Supplier Evidence Portal 교육", "TODO", "Supplier session", "SW Owner"),
+    // Ops Control
+    wb("opsctl", "Alert", "ALT-001 · Safety/Security KPI CRITICAL", "FIRING", "BLOCK/ROLLBACK · Immediate", "System/Safety"),
+    wb("opsctl", "Alert", "ALT-003 · Telemetry Missing CRITICAL", "ACK", "HOLD · 1 day", "Operation Owner"),
+    wb("opsctl", "Alert", "ALT-008 · Activation Failure WARNING", "RESOLVED", "Managed HOLD", "Operation Owner"),
+    // Launch & Adoption
+    wb("launch", "Pilot", "Gate trial (RG1~9 dry-run)", "진행", "Wave 2 · Gate Review Board", "Gate Board"),
+    wb("launch", "Pilot", "Release simulation", "미착수", "Wave 3 · Release Owner", "Release Owner"),
+    wb("launch", "Migration", "Requirements → FeatureRequirement", "진행", "Wave 1 · ALM/DOORS", "System Owner"),
+  ];
+
+  return { features, featureRequests, gates, evidence, supplierWorkPackages, releasePlans, auditLogs, vehicles: buildVehicles(), eligibilityRules: [], eligibilityHistory: [], activations: [], fieldIssues: [], requirements, tests, defects, releaseCandidates, flagStates, workbenchItems };
 }
