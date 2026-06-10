@@ -7,13 +7,19 @@ export type ResourceName = keyof SeedData;
 const STORAGE_KEY = "ff-platform-mockdb-v4"; // v4: fieldIssues 추가
 
 function load(): SeedData {
+  const fresh = buildSeed();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as SeedData;
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<SeedData>;
+      // 구버전 스냅샷 호환: 나중에 추가된 리소스(flagStates·workbenchItems·requirements 등)가
+      // 없으면 시드값으로 백필. 기존 리소스는 사용자 데이터 보존. (Unleash·워크벤치가 Mock에서도 동작)
+      return { ...fresh, ...saved } as SeedData;
+    }
   } catch {
     /* ignore */
   }
-  return buildSeed();
+  return fresh;
 }
 
 class MockStore {

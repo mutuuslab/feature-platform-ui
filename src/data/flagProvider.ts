@@ -70,10 +70,13 @@ export function flagDrift(featureId: string, desiredSummary: string): boolean | 
   return s.constraintsSummary !== desiredSummary;
 }
 
-/** 결정적 metrics (노출/활성) — 데모용. */
+/** 결정적 metrics (노출/활성) — 데모용. prod 상태(활성·rollout)를 반영해 Sync/Kill/rollout 시 변동. */
 export function flagMetrics(featureId: string): { exposures: number; enabledPct: number } {
   let h = 0;
   for (let i = 0; i < featureId.length; i++) h = (h * 31 + featureId.charCodeAt(i)) | 0;
   h = Math.abs(h);
-  return { exposures: 5000 + (h % 90000), enabledPct: 70 + (h % 28) };
+  const prod = store.get<FlagStateRecord>("flagStates", featureId)?.envs.prod;
+  const audience = 5000 + (h % 90000);
+  if (!prod?.enabled) return { exposures: 0, enabledPct: 0 };
+  return { exposures: Math.round(audience * (prod.rollout / 100)), enabledPct: prod.rollout };
 }
