@@ -2,6 +2,7 @@
 import { Tooltip } from "antd";
 import type { Gate, GateStatus, LifecycleStatus } from "../../domain/types";
 import { GATES, LIFECYCLE_SEQUENCE, gateStatusColor } from "../../domain/codeMaster";
+import { useTheme } from "../../theme/ThemeContext";
 
 function statusGlow(s: GateStatus): string {
   const c = gateStatusColor(s);
@@ -12,9 +13,14 @@ function statusGlow(s: GateStatus): string {
 export function GatePipeline({ gates, onPick, compact }: { gates: Gate[]; onPick?: (code: string) => void; compact?: boolean }) {
   const byCode = new Map(gates.map((g) => [g.gateCode, g]));
   const node = compact ? 22 : 34;
+  const { dark } = useTheme();
+  const railBg = dark ? "linear-gradient(90deg,#26344b,#1e2f49)" : "linear-gradient(90deg,#cbd5e1,#e2e8f0)";
+  const nsBg = dark ? "#1e2f49" : "#f1f5f9";
+  const nsBorder = dark ? "#2b3d57" : "#e2e8f0";
+  const labelColor = dark ? "#94a3b8" : "#64748b";
   return (
     <div style={{ position: "relative", padding: compact ? "4px 2px" : "20px 8px 8px" }}>
-      <div style={{ position: "absolute", left: compact ? 12 : 24, right: compact ? 12 : 24, top: compact ? "50%" : 38, height: 3, background: "linear-gradient(90deg,#cbd5e1,#e2e8f0)", borderRadius: 3 }} />
+      <div style={{ position: "absolute", left: compact ? 12 : 24, right: compact ? 12 : 24, top: compact ? "50%" : 38, height: 3, background: railBg, borderRadius: 3 }} />
       <div style={{ display: "flex", justifyContent: "space-between", position: "relative" }}>
         {GATES.map((meta) => {
           const g = byCode.get(meta.code);
@@ -39,15 +45,15 @@ export function GatePipeline({ gates, onPick, compact }: { gates: Gate[]; onPick
                     fontWeight: 700,
                     fontFamily: '"IBM Plex Mono",monospace',
                     color: status === "NOT_STARTED" ? "#94a3b8" : "#fff",
-                    background: status === "NOT_STARTED" ? "#f1f5f9" : color,
-                    border: status === "NOT_STARTED" ? "2px solid #e2e8f0" : `2px solid ${color}`,
+                    background: status === "NOT_STARTED" ? nsBg : color,
+                    border: status === "NOT_STARTED" ? `2px solid ${nsBorder}` : `2px solid ${color}`,
                     boxShadow: statusGlow(status),
                     transition: "all 0.3s ease",
                   }}
                 >
                   {done ? "✓" : meta.code.replace("RG", "")}
                 </div>
-                {!compact && <span style={{ fontSize: 10, color: "#64748b", textAlign: "center", maxWidth: 64, lineHeight: 1.2 }}>{meta.name.replace(" Gate", "").replace(" / ", "/")}</span>}
+                {!compact && <span style={{ fontSize: 10, color: labelColor, textAlign: "center", maxWidth: 64, lineHeight: 1.2 }}>{meta.name.replace(" Gate", "").replace(" / ", "/")}</span>}
               </div>
             </Tooltip>
           );
@@ -60,6 +66,8 @@ export function GatePipeline({ gates, onPick, compact }: { gates: Gate[]; onPick
 /** Lifecycle 7단계 펑넬 — 현재 단계 강조 */
 export function LifecyclePipeline({ current, compact }: { current: LifecycleStatus; compact?: boolean }) {
   const idx = LIFECYCLE_SEQUENCE.indexOf(current);
+  const { dark } = useTheme();
+  const futureBg = dark ? "#13243f" : "#eef2f8";
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: compact ? "nowrap" : "wrap" }}>
       {LIFECYCLE_SEQUENCE.map((s, i) => {
@@ -69,7 +77,7 @@ export function LifecyclePipeline({ current, compact }: { current: LifecycleStat
           ? "linear-gradient(135deg,#0891b2,#22d3ee)"
           : isPast
             ? "#1f4e78"
-            : "#eef2f8";
+            : futureBg;
         const color = isCurrent || isPast ? "#fff" : "#94a3b8";
         return (
           <div

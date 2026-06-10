@@ -291,6 +291,8 @@ h1, h2, h3, h4, h5,
   border: 2px solid var(--canvas);
 }
 *::-webkit-scrollbar-thumb:hover { background: #9fb6d1; }
+body[data-theme="dark"] *::-webkit-scrollbar-thumb { background: #2b3d57; }
+body[data-theme="dark"] *::-webkit-scrollbar-thumb:hover { background: #3b4f6e; }
 
 /* antd 카드/테이블 톤 보정 */
 .ant-card { box-shadow: var(--shadow-card); border-color: var(--border); }

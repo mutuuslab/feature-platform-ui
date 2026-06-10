@@ -30,7 +30,8 @@ export function GateTrackerPage() {
   const setGate = (gateCode: string, status: GateStatus) => {
     if (!feature) return;
     mutate(() => {
-      const g = gates.find((x) => x.gateCode === gateCode)!;
+      const g = gates.find((x) => x.gateCode === gateCode);
+      if (!g) return;
       store.update<Gate>("gates", g.id, {
         status,
         evidenceCount: status === "PASS" ? Math.max(g.evidenceCount, 1) : g.evidenceCount,

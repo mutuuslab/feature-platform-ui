@@ -18,9 +18,9 @@ export function KpiCommandPage() {
   const weeks = ["W-5", "W-4", "W-3", "W-2", "W-1", "Now"];
   const opsTrend = weeks.map((w, i) => ({
     week: w,
-    "Activation Success": KPIS.find((k) => k.id === "KPI-OPS-001")!.trend[i],
-    "Gate PASS Ratio": KPIS.find((k) => k.id === "KPI-LC-002")!.trend[i],
-    "Evidence Completeness": KPIS.find((k) => k.id === "KPI-TRC-003")!.trend[i],
+    "Activation Success": KPIS.find((k) => k.id === "KPI-OPS-001")?.trend[i] ?? 0,
+    "Gate PASS Ratio": KPIS.find((k) => k.id === "KPI-LC-002")?.trend[i] ?? 0,
+    "Evidence Completeness": KPIS.find((k) => k.id === "KPI-TRC-003")?.trend[i] ?? 0,
   }));
 
   return (
