@@ -36,6 +36,9 @@ export function LoginPage() {
             로그인
           </Button>
         </Form>
+        <div style={{ marginTop: 16, textAlign: "center", color: "rgba(255,255,255,0.7)", fontSize: 12, background: "rgba(255,255,255,0.06)", border: "1px dashed rgba(255,255,255,0.18)", borderRadius: 10, padding: "8px 10px" }}>
+          데모 계정 — ID <b style={{ color: "#7fdfef" }}>admin</b> · PW <b style={{ color: "#7fdfef" }}>admin</b>
+        </div>
       </div>
       <div style={{ position: "absolute", bottom: 16, color: "rgba(255,255,255,0.4)", fontSize: 11 }}>Vehicle Feature Lifecycle — Mission Control · Demo</div>
     </div>
