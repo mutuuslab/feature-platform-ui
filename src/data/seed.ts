@@ -1,13 +1,17 @@
 // 시드 데이터 — 시트 41_Demo_Scenario_Script (FEAT-RPA-001 "Remote Parking Assist") 중심
 import type {
   AuditLog,
+  DefectRecord,
   Evidence,
   Feature,
   FeatureRequest,
   Gate,
   GateCode,
+  ReleaseCandidateRecord,
   ReleasePlan,
+  RequirementRecord,
   SupplierWorkPackage,
+  TestRunRecord,
 } from "../domain/types";
 import { GATES } from "../domain/codeMaster";
 import { buildVehicles, type ActivationRecord, type EligibilityRuleRecord, type EligibilityVersionRecord, type FieldIssueRecord, type VehicleRecord } from "./population";
@@ -41,6 +45,10 @@ export interface SeedData {
   eligibilityHistory: EligibilityVersionRecord[];
   activations: ActivationRecord[];
   fieldIssues: FieldIssueRecord[];
+  requirements: RequirementRecord[];
+  tests: TestRunRecord[];
+  defects: DefectRecord[];
+  releaseCandidates: ReleaseCandidateRecord[];
 }
 
 export function buildSeed(): SeedData {
@@ -182,5 +190,33 @@ export function buildSeed(): SeedData {
     { id: "AU-0002", actor: "S. System", action: "GATE_PASS", objectType: "Gate", objectId: "FEAT-RPA-001-RG2", before: "PENDING", after: "PASS", reason: "Requirement baseline approved", timestamp: now },
   ];
 
-  return { features, featureRequests, gates, evidence, supplierWorkPackages, releasePlans, auditLogs, vehicles: buildVehicles(), eligibilityRules: [], eligibilityHistory: [], activations: [], fieldIssues: [] };
+  const requirements: RequirementRecord[] = [
+    { id: "REQ-RPA-001", featureId: "FEAT-RPA-001", type: "Functional", text: "스마트폰 앱으로 원격 주차 시작/중단", asil: "QM", verifyMethod: "Vehicle", status: "APPROVED" },
+    { id: "REQ-RPA-002", featureId: "FEAT-RPA-001", type: "Safety", text: "장애물 감지 시 1초 이내 정지", asil: "ASIL B", verifyMethod: "HIL", status: "VERIFIED" },
+    { id: "REQ-RPA-003", featureId: "FEAT-RPA-001", type: "Security", text: "원격 제어 세션 위·변조 방지(mTLS)", asil: "QM", verifyMethod: "Review", status: "APPROVED" },
+    { id: "REQ-RPA-004", featureId: "FEAT-RPA-001", type: "Functional", text: "연결 끊김 시 안전 정지", asil: "ASIL B", verifyMethod: "SIL", status: "DRAFT" },
+    { id: "REQ-ALK-001", featureId: "FEAT-ALK-002", type: "Safety", text: "차로 이탈 시 보조 토크 한계 준수", asil: "ASIL D", verifyMethod: "HIL", status: "VERIFIED" },
+    { id: "REQ-ALK-002", featureId: "FEAT-ALK-002", type: "Functional", text: "곡선로 차로 중앙 유지 오차 ≤ 0.2m", asil: "ASIL C", verifyMethod: "Vehicle", status: "APPROVED" },
+  ];
+
+  const tests: TestRunRecord[] = [
+    { id: "TST-RPA-001", featureId: "FEAT-RPA-001", suite: "Parking Regression", env: "SIL", passed: 124, total: 142, status: "FAIL" },
+    { id: "TST-RPA-002", featureId: "FEAT-RPA-001", suite: "Obstacle Stop HIL", env: "HIL", passed: 87, total: 100, status: "RUNNING" },
+    { id: "TST-ALK-001", featureId: "FEAT-ALK-002", suite: "Lane Keep Full", env: "Vehicle", passed: 318, total: 318, status: "PASS" },
+    { id: "TST-DST-001", featureId: "FEAT-DST-003", suite: "Drive Mode CI", env: "CI", passed: 96, total: 96, status: "PASS" },
+  ];
+
+  const defects: DefectRecord[] = [
+    { id: "DEF-2026-114", featureId: "FEAT-RPA-001", severity: "Blocker", summary: "저조도 환경 장애물 오감지", owner: "Acme Supplier", status: "OPEN" },
+    { id: "DEF-2026-110", featureId: "FEAT-RPA-001", severity: "Major", summary: "앱 재연결 시 상태 불일치", owner: "W. Software", status: "FIXED" },
+    { id: "DEF-2026-098", featureId: "FEAT-ALK-002", severity: "Minor", summary: "HMI 경고음 지연", owner: "W. Software", status: "VERIFIED" },
+  ];
+
+  const releaseCandidates: ReleaseCandidateRecord[] = [
+    { id: "RC-2026-08", name: "August Wave", featureIds: ["FEAT-DST-003", "FEAT-ALK-002"], swBaseline: "SWB-26.8", targetEnv: "prod", status: "DEPLOYED" },
+    { id: "RC-2026-09", name: "September RC", featureIds: ["FEAT-RPA-001"], swBaseline: "SWB-26.9", targetEnv: "qa", status: "FROZEN" },
+    { id: "RC-2026-10", name: "October Draft", featureIds: ["FEAT-VFC-004"], swBaseline: "SWB-26.10", targetEnv: "dev", status: "DRAFT" },
+  ];
+
+  return { features, featureRequests, gates, evidence, supplierWorkPackages, releasePlans, auditLogs, vehicles: buildVehicles(), eligibilityRules: [], eligibilityHistory: [], activations: [], fieldIssues: [], requirements, tests, defects, releaseCandidates };
 }

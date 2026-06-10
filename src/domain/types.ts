@@ -186,6 +186,47 @@ export interface ReleasePlan {
   decision: ProductionDecision;
 }
 
+// ── Phase 2 워크벤치 심화용 도메인 레코드 ──
+export type AsilLevel = "QM" | "ASIL A" | "ASIL B" | "ASIL C" | "ASIL D";
+
+export interface RequirementRecord {
+  id: string;
+  featureId: string;
+  type: "Functional" | "Safety" | "Security";
+  text: string;
+  asil: AsilLevel;
+  verifyMethod: "SIL" | "HIL" | "Vehicle" | "Review";
+  status: "DRAFT" | "APPROVED" | "VERIFIED" | "REJECTED";
+}
+
+export interface TestRunRecord {
+  id: string;
+  featureId: string;
+  suite: string;
+  env: "SIL" | "HIL" | "Vehicle" | "CI";
+  passed: number;
+  total: number;
+  status: "PASS" | "FAIL" | "RUNNING";
+}
+
+export interface DefectRecord {
+  id: string;
+  featureId: string;
+  severity: "Blocker" | "Major" | "Minor";
+  summary: string;
+  owner: string;
+  status: "OPEN" | "FIXED" | "VERIFIED";
+}
+
+export interface ReleaseCandidateRecord {
+  id: string;
+  name: string;
+  featureIds: string[];
+  swBaseline: string;
+  targetEnv: "dev" | "qa" | "prod";
+  status: "DRAFT" | "FROZEN" | "DEPLOYED" | "ROLLED_BACK";
+}
+
 export interface AuditLog {
   id: string;
   actor: string;

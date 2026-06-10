@@ -103,6 +103,10 @@ function genId(resource: ResourceName): string {
     eligibilityHistory: "EVH",
     activations: "ACT",
     fieldIssues: "FI",
+    requirements: "REQ",
+    tests: "TST",
+    defects: "DEF",
+    releaseCandidates: "RC",
   };
   return `${prefix[resource]}-${counter}`;
 }

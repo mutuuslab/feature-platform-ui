@@ -1,10 +1,10 @@
 // 도메인 워크벤치 모음 — 시트 17 UI 인벤토리의 나머지 UI-0xx를 탭으로 커버.
-import { Button, Empty, Space, Table, Tag } from "antd";
+import { Alert, Button, Empty, Progress, Space, Table, Tag } from "antd";
 import { Link } from "react-router";
 import { Workbench, type WbTab } from "../components/Workbench";
 import { store, useList, useMutate } from "../data/useStore";
 import type { FieldIssueRecord } from "../data/population";
-import type { Feature, Gate } from "../domain/types";
+import type { DefectRecord, Feature, Gate, ReleaseCandidateRecord, RequirementRecord, TestRunRecord } from "../domain/types";
 import { derivedLifecycleStatus } from "../domain/gateLogic";
 import { useRole } from "../auth/RoleContext";
 
@@ -439,12 +439,181 @@ export const ArchitecturePage = () => <Workbench title="Engineering & Architectu
 export const LaunchAdoptionPage = () => <Workbench title="Launch & Adoption" subtitle="시트 51/52/55 · Pilot Scope · Migration/Cutover · Hypercare Runbook" icon="🚩" tabs={LAUNCH_TABS} />;
 
 export const ProductScopePage = () => <Workbench title="Product & Scope" subtitle="UI-013/014 · 상품 전략·가격·적용 범위" icon="💲" tabs={PRODUCT_TABS} />;
-export const RequirementsPage = () => <Workbench title="Requirements & System" subtitle="UI-015/016 · 차량 요구사항·System 영향" icon="📋" tabs={REQ_TABS} />;
-export const SafetySecurityPage = () => <Workbench title="Safety & Security" subtitle="UI-019/020 · HARA/TARA·등급 분류 (RG7)" icon="🛡" tabs={SAFETY_TABS} />;
 export const SwApiPage = () => <Workbench title="SW & API" subtitle="UI-021/022/023 · Component·API Contract·Dependency" icon="🔌" tabs={SWAPI_TABS} />;
 export const ControlRuntimePage = () => <Workbench title="Control & Runtime" subtitle="UI-024/025/027 · Policy·Context·Simulation" icon="⚙️" tabs={CONTROL_TABS} />;
-export const VerificationPage = () => <Workbench title="Verification" subtitle="UI-032/033/034/035 · Test·CI/CD·HIL/SIL·Defect (RG5)" icon="🧪" tabs={VERIFY_TABS} />;
-export const OtaPage = () => <Workbench title="Release & OTA" subtitle="UI-039/041/042 · RC·Deploy Console·Rollback (RG8)" icon="📡" tabs={OTA_TABS} />;
+
+// ── Phase 2 심화: store 연동 Live 탭 헬퍼 ──
+const asilColor = (a: string) => (a === "ASIL D" ? "#b91c1c" : a === "ASIL C" ? "#c2410c" : a === "ASIL B" ? "#b45309" : a === "ASIL A" ? "#ca8a04" : "#64748b");
+const REQ_COLOR: Record<string, string> = { DRAFT: "#64748b", APPROVED: "#0891b2", VERIFIED: "#15803d", REJECTED: "#b91c1c" };
+const TEST_COLOR: Record<string, string> = { PASS: "#15803d", FAIL: "#b91c1c", RUNNING: "#b45309" };
+const DEF_SEV: Record<string, string> = { Blocker: "#b91c1c", Major: "#b45309", Minor: "#64748b" };
+const DEF_COLOR: Record<string, string> = { OPEN: "#b45309", FIXED: "#0891b2", VERIFIED: "#15803d" };
+const RC_COLOR: Record<string, string> = { DRAFT: "#64748b", FROZEN: "#b45309", DEPLOYED: "#15803d", ROLLED_BACK: "#b91c1c" };
+const ENV_COLOR: Record<string, string> = { dev: "#64748b", qa: "#b45309", prod: "#15803d" };
+
+// Requirements & System — Live Requirement Editor (store)
+export function RequirementsPage() {
+  const reqs = useList<RequirementRecord>("requirements");
+  const mutate = useMutate();
+  const { userName } = useRole();
+  const cycle = (r: RequirementRecord) => {
+    const next: RequirementRecord["status"] = r.status === "DRAFT" ? "APPROVED" : r.status === "APPROVED" ? "VERIFIED" : "DRAFT";
+    mutate(() => {
+      store.update<RequirementRecord>("requirements", r.id, { status: next });
+      store.audit({ actor: userName, action: `REQ_${next}`, objectType: "Requirement", objectId: r.id, before: r.status, after: next });
+    });
+  };
+  const liveTab = {
+    key: "live-req",
+    label: <span>📋 Requirements ({reqs.filter((r) => r.status !== "VERIFIED").length} open)</span>,
+    children: reqs.length ? (
+      <Table<RequirementRecord> rowKey="id" dataSource={reqs} pagination={false} scroll={{ x: "max-content" }}
+        columns={[
+          { title: "Req ID", dataIndex: "id", render: (v) => <span className="fp-mono">{v}</span> },
+          { title: "Feature", dataIndex: "featureId", render: (v) => <Link to={`/features/${v}`} className="fp-mono">{v}</Link> },
+          { title: "Type", dataIndex: "type", render: (v) => <Tag color={v === "Safety" ? "#b45309" : v === "Security" ? "#6d28d9" : "#1f4e78"}>{v}</Tag> },
+          { title: "Requirement", dataIndex: "text" },
+          { title: "ASIL", dataIndex: "asil", render: (v) => <Tag color={asilColor(v)}>{v}</Tag> },
+          { title: "Verify", dataIndex: "verifyMethod" },
+          { title: "Status", dataIndex: "status", render: (v) => <Tag color={REQ_COLOR[v]}>{v}</Tag> },
+          { title: "Action", render: (_, r) => <Button size="small" type="primary" ghost onClick={() => cycle(r)}>{r.status === "DRAFT" ? "승인" : r.status === "APPROVED" ? "검증완료" : "재작성"}</Button> },
+        ]} />
+    ) : <Empty description="등록된 요구사항 없음" />,
+  };
+  return <Workbench title="Requirements & System" subtitle="UI-015/016 · 차량 요구사항·System 영향 (RG2)" icon="📋" tabs={REQ_TABS} customTabs={[liveTab]} />;
+}
+
+// Safety & Security — Live HARA/TARA 항목 (requirements 중 Safety/Security)
+export function SafetySecurityPage() {
+  const items = useList<RequirementRecord>("requirements").filter((r) => r.type === "Safety" || r.type === "Security");
+  const mutate = useMutate();
+  const { userName } = useRole();
+  const verify = (r: RequirementRecord) => {
+    const next: RequirementRecord["status"] = r.status === "VERIFIED" ? "APPROVED" : "VERIFIED";
+    mutate(() => {
+      store.update<RequirementRecord>("requirements", r.id, { status: next });
+      store.audit({ actor: userName, action: `SAFETY_${next}`, objectType: "Requirement", objectId: r.id, before: r.status, after: next });
+    });
+  };
+  const openHigh = items.filter((r) => (r.asil === "ASIL C" || r.asil === "ASIL D") && r.status !== "VERIFIED").length;
+  const liveTab = {
+    key: "live-safety",
+    label: <span>🛡 Safety/Security ({items.filter((r) => r.status !== "VERIFIED").length} open)</span>,
+    children: (
+      <>
+        {openHigh > 0 && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={`고위험(ASIL C/D) 미검증 ${openHigh}건 — RG7 PASS 전 검증 필요`} />}
+        {items.length ? (
+          <Table<RequirementRecord> rowKey="id" dataSource={items} pagination={false} scroll={{ x: "max-content" }}
+            columns={[
+              { title: "ID", dataIndex: "id", render: (v) => <span className="fp-mono">{v}</span> },
+              { title: "Feature", dataIndex: "featureId", render: (v) => <Link to={`/features/${v}`} className="fp-mono">{v}</Link> },
+              { title: "Type", dataIndex: "type", render: (v) => <Tag color={v === "Security" ? "#6d28d9" : "#b45309"}>{v === "Security" ? "TARA(보안)" : "HARA(안전)"}</Tag> },
+              { title: "Goal / Threat", dataIndex: "text" },
+              { title: "ASIL/CAL", dataIndex: "asil", render: (v) => <Tag color={asilColor(v)}>{v}</Tag> },
+              { title: "Status", dataIndex: "status", render: (v) => <Tag color={REQ_COLOR[v]}>{v}</Tag> },
+              { title: "Action", render: (_, r) => <Button size="small" type="primary" ghost onClick={() => verify(r)}>{r.status === "VERIFIED" ? "재검토" : "검증 승인"}</Button> },
+            ]} />
+        ) : <Empty description="Safety/Security 항목 없음" />}
+      </>
+    ),
+  };
+  return <Workbench title="Safety & Security" subtitle="UI-019/020 · HARA/TARA·등급 분류 (RG7)" icon="🛡" tabs={SAFETY_TABS} customTabs={[liveTab]} />;
+}
+
+// Verification — Live Test Runs + Defects (store)
+export function VerificationPage() {
+  const tests = useList<TestRunRecord>("tests");
+  const defects = useList<DefectRecord>("defects");
+  const mutate = useMutate();
+  const { userName } = useRole();
+  const setTest = (t: TestRunRecord, status: TestRunRecord["status"]) =>
+    mutate(() => {
+      store.update<TestRunRecord>("tests", t.id, status === "PASS" ? { status, passed: t.total } : { status });
+      store.audit({ actor: userName, action: `TEST_${status}`, objectType: "TestRun", objectId: t.id, after: status });
+    });
+  const cycleDefect = (d: DefectRecord) => {
+    const next: DefectRecord["status"] = d.status === "OPEN" ? "FIXED" : d.status === "FIXED" ? "VERIFIED" : "OPEN";
+    mutate(() => {
+      store.update<DefectRecord>("defects", d.id, { status: next });
+      store.audit({ actor: userName, action: `DEFECT_${next}`, objectType: "Defect", objectId: d.id, before: d.status, after: next });
+    });
+  };
+  const openBlockers = defects.filter((d) => d.severity === "Blocker" && d.status === "OPEN").length;
+  const testsTab = {
+    key: "live-tests",
+    label: <span>🧪 Test Runs ({tests.filter((t) => t.status !== "PASS").length} open)</span>,
+    children: tests.length ? (
+      <Table<TestRunRecord> rowKey="id" dataSource={tests} pagination={false} scroll={{ x: "max-content" }}
+        columns={[
+          { title: "Test ID", dataIndex: "id", render: (v) => <span className="fp-mono">{v}</span> },
+          { title: "Feature", dataIndex: "featureId", render: (v) => <Link to={`/features/${v}`} className="fp-mono">{v}</Link> },
+          { title: "Suite", dataIndex: "suite" },
+          { title: "Env", dataIndex: "env", render: (v) => <Tag>{v}</Tag> },
+          { title: "통과율", render: (_, t) => <Progress percent={Math.round((t.passed / t.total) * 100)} size="small" style={{ width: 150 }} status={t.status === "FAIL" ? "exception" : t.status === "PASS" ? "success" : "active"} format={() => `${t.passed}/${t.total}`} /> },
+          { title: "Status", dataIndex: "status", render: (v) => <Tag color={TEST_COLOR[v]}>{v}</Tag> },
+          { title: "Action", render: (_, t) => <Space><Button size="small" type="primary" onClick={() => setTest(t, "PASS")}>통과</Button><Button size="small" danger onClick={() => setTest(t, "FAIL")}>실패</Button></Space> },
+        ]} />
+    ) : <Empty description="테스트 런 없음" />,
+  };
+  const defectsTab = {
+    key: "live-defects",
+    label: <span>🐞 Defects ({defects.filter((d) => d.status !== "VERIFIED").length} open)</span>,
+    children: (
+      <>
+        {openBlockers > 0 && <Alert type="error" showIcon style={{ marginBottom: 12 }} message={`Blocker 결함 ${openBlockers}건 OPEN — RG5 PASS 불가`} />}
+        {defects.length ? (
+          <Table<DefectRecord> rowKey="id" dataSource={defects} pagination={false} scroll={{ x: "max-content" }}
+            columns={[
+              { title: "Defect", dataIndex: "id", render: (v) => <span className="fp-mono">{v}</span> },
+              { title: "Severity", dataIndex: "severity", render: (v) => <Tag color={DEF_SEV[v]}>{v}</Tag> },
+              { title: "Feature", dataIndex: "featureId", render: (v) => <Link to={`/features/${v}`} className="fp-mono">{v}</Link> },
+              { title: "Summary", dataIndex: "summary" },
+              { title: "Owner", dataIndex: "owner" },
+              { title: "Status", dataIndex: "status", render: (v) => <Tag color={DEF_COLOR[v]}>{v}</Tag> },
+              { title: "Action", render: (_, d) => <Button size="small" type="primary" ghost onClick={() => cycleDefect(d)}>{d.status === "OPEN" ? "수정완료" : d.status === "FIXED" ? "검증완료" : "재오픈"}</Button> },
+            ]} />
+        ) : <Empty description="결함 없음" />}
+      </>
+    ),
+  };
+  return <Workbench title="Verification" subtitle="UI-032/033/034/035 · Test·CI/CD·HIL/SIL·Defect (RG5)" icon="🧪" tabs={VERIFY_TABS} customTabs={[testsTab, defectsTab]} />;
+}
+
+// Release & OTA — Live Release Candidate 배포 콘솔 (store)
+export function OtaPage() {
+  const rcs = useList<ReleaseCandidateRecord>("releaseCandidates");
+  const mutate = useMutate();
+  const { userName } = useRole();
+  const advance = (rc: ReleaseCandidateRecord, status: ReleaseCandidateRecord["status"], action: string) =>
+    mutate(() => {
+      store.update<ReleaseCandidateRecord>("releaseCandidates", rc.id, { status });
+      store.audit({ actor: userName, action, objectType: "ReleaseCandidate", objectId: rc.id, before: rc.status, after: status, reason: rc.featureIds.join(", ") });
+    });
+  const liveTab = {
+    key: "live-rc",
+    label: <span>📡 Release Candidates ({rcs.filter((r) => r.status !== "DEPLOYED" && r.status !== "ROLLED_BACK").length} active)</span>,
+    children: rcs.length ? (
+      <Table<ReleaseCandidateRecord> rowKey="id" dataSource={rcs} pagination={false} scroll={{ x: "max-content" }}
+        columns={[
+          { title: "RC", dataIndex: "id", render: (v) => <span className="fp-mono">{v}</span> },
+          { title: "Name", dataIndex: "name" },
+          { title: "Features", dataIndex: "featureIds", render: (v: string[]) => <Space wrap size={2}>{v.map((f) => <Link key={f} to={`/features/${f}`}><Tag className="fp-mono">{f}</Tag></Link>)}</Space> },
+          { title: "SW Baseline", dataIndex: "swBaseline", render: (v) => <span className="fp-mono">{v}</span> },
+          { title: "Env", dataIndex: "targetEnv", render: (v) => <Tag color={ENV_COLOR[v]}>{v}</Tag> },
+          { title: "Status", dataIndex: "status", render: (v) => <Tag color={RC_COLOR[v]}>{v}</Tag> },
+          {
+            title: "Action",
+            render: (_, rc) =>
+              rc.status === "DRAFT" ? <Button size="small" onClick={() => advance(rc, "FROZEN", "RC_FROZEN")}>Freeze</Button>
+              : rc.status === "FROZEN" ? <Button size="small" type="primary" onClick={() => advance(rc, "DEPLOYED", "RC_DEPLOYED")}>Deploy (OTA)</Button>
+              : rc.status === "DEPLOYED" ? <Space><Button size="small" danger onClick={() => advance(rc, "ROLLED_BACK", "RC_ROLLED_BACK")}>Rollback</Button><Link to="/fleet"><Button size="small">Fleet</Button></Link></Space>
+              : <Tag>완료</Tag>,
+          },
+        ]} />
+    ) : <Empty description="Release Candidate 없음" />,
+  };
+  return <Workbench title="Release & OTA" subtitle="UI-039/041/042 · RC·Deploy Console·Rollback (RG8)" icon="📡" tabs={OTA_TABS} customTabs={[liveTab]} />;
+}
 // ① Field Ops — store 연동 Live Field Issue 목록/마감 (Fleet Control에서 생성된 이슈)
 export const FieldOpsPage = () => {
   const issues = useList<FieldIssueRecord>("fieldIssues");
