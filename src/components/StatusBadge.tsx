@@ -36,7 +36,9 @@ const GENERIC_COLORS: Record<string, string> = {
   DRAFT: "#4B5563",
   REWORK: "#4B5563",
   REWORK_REQUESTED: "#4B5563",
-  MERGED: "#4B5563",
+  MERGED: "#6D28D9",
+  BACKLOG: "#7A5C00",
+  ESCALATED: "#9A3412",
   BLOCK: "#9A3412",
   REJECTED: "#9A3412",
 };

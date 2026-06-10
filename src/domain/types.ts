@@ -37,7 +37,9 @@ export type RequestStatus =
   | "REWORK_REQUESTED"
   | "REGISTERED"
   | "REJECTED"
-  | "MERGED";
+  | "MERGED"
+  | "BACKLOG"
+  | "ESCALATED";
 
 export type OwnerRoleKey =
   | "productOwner"
@@ -66,6 +68,15 @@ export interface Feature {
   customerValue?: string;
   createdAt: string;
   updatedAt: string;
+
+  // Feature Taxonomy (L0~L5, L2=기준 Feature Master) — domain/taxonomy.ts
+  taxonomyLevel?: "L0" | "L1" | "L2" | "L3" | "L4" | "L5";
+  featureType?: string; // Vehicle/System Feature 등
+  parentFeatureId?: string; // 상위(L1 클러스터/L2) 식별자
+  displayName?: string; // 고객/차량 관점 표시명
+  internalAlias?: string; // 조직 내부 명명
+  ownerOrg?: string; // 소유 조직
+  traceabilityRoot?: string; // 추적성 루트(보통 자기 L2 id)
 }
 
 export interface FeatureRequest {
@@ -81,6 +92,7 @@ export interface FeatureRequest {
   completeness?: "PASS" | "FAIL";
   duplicateResult?: string;
   featureId?: string; // 등록 후 발급된 Feature ID
+  mergedInto?: string; // Merge 결정 시 통합 대상 Feature/제안 ID
   createdAt: string;
 
   // 제안서 상세 (3-Step 등록 위저드)

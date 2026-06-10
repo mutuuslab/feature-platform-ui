@@ -62,7 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { key: "/requests/new", label: "Feature Request", icon: <FileAddOutlined />, roles: ["Requester", "PMO", "Admin"] },
       { key: "/intake", label: "Intake Review", icon: <InboxOutlined />, roles: ["PMO", "ProductOwner", "Admin"] },
-      { key: "/features", label: "Feature Registry", icon: <AppstoreOutlined />, roles: ALL },
+      { key: "/features", label: "Feature Catalog", icon: <AppstoreOutlined />, roles: ALL },
       { key: "/lifecycle", label: "Lifecycle", icon: <NodeIndexOutlined />, roles: ["PMO", "ProductOwner", "SystemOwner", "ReleaseOwner", "OperationOwner", "Admin"] },
     ],
   },

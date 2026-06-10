@@ -59,7 +59,7 @@ const PAGES: [string, () => React.JSX.Element, string][] = [
   ["Dashboard", DashboardPage, "Control Tower"],
   ["FeatureRequest", FeatureRequestPage, "Feature 신규 등록"],
   ["Intake", IntakeReviewPage, "Intake Review Board"],
-  ["Registry", RegistryListPage, "Feature Registry"],
+  ["Registry", RegistryListPage, "Feature Catalog"],
   ["Lifecycle", LifecycleDashboardPage, "Lifecycle Status Dashboard"],
   ["GateTracker", GateTrackerPage, "9 Gate Readiness Tracker"],
   ["GateEvidence", GateEvidencePage, "Gate Evidence Management"],
