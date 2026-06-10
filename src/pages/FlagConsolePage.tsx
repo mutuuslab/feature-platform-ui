@@ -28,7 +28,7 @@ export function FlagConsolePage() {
     <div>
       <PageHeader
         title="Feature Flag 콘솔"
-        subtitle="Unleash 연동 (안 A · headless) — 플랫폼에서만 관리, Unleash 콘솔 미사용"
+        subtitle="Unleash(OSS) 연동 · headless — 플랫폼에서만 관리, Unleash 콘솔 미사용"
         icon="🚩"
         extra={<Tag bordered={false} style={{ background: mode === "unleash" ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.16)", color: mode === "unleash" ? "#86efac" : "#cfe7f5" }}>{mode === "unleash" ? "Unleash 연결됨" : "Mock 모드"}</Tag>}
       />
