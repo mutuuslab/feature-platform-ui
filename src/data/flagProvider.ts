@@ -4,6 +4,7 @@
 // dataProvider/aiProvider 와 동일한 Mock↔real 패턴.
 import { store } from "./store";
 import { API_URL, USE_BACKEND } from "./apiConfig";
+import type { UnleashConstraint } from "./population";
 import type { FlagEnv, FlagEnvState, FlagStateRecord } from "../domain/types";
 
 export const flagMode = (): "unleash" | "mock" => (USE_BACKEND ? "unleash" : "mock");
@@ -37,26 +38,29 @@ function pushBackend(path: string, body: unknown) {
   fetch(`${API_URL}/api/flags/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
 }
 
-/** 룰을 Unleash로 동기화(해당 env 활성 + rollout + constraints 요약 기록). store.audit 남김. */
-export function syncFlag(featureId: string, summary: string, env: FlagEnv, rollout: number, actor: string) {
+/** 룰을 Unleash로 동기화(해당 env 활성 + rollout + constraints 적용). store.audit 남김.
+ *  constraints: 실제 Unleash flexibleRollout 전략에 적용할 제약(미지정 시 룰 없음). */
+export function syncFlag(featureId: string, summary: string, env: FlagEnv, rollout: number, actor: string, constraints: UnleashConstraint[] = []) {
   const s = getFlagState(featureId);
   const next: FlagStateRecord = { ...s, envs: { ...s.envs, [env]: { enabled: true, rollout } }, constraintsSummary: summary, lastSyncAt: new Date().toISOString() };
   persist(next);
   store.audit({ actor, action: "FLAG_SYNC", objectType: "FeatureFlag", objectId: next.flagKey, after: `${env} ${rollout}%`, reason: summary });
-  pushBackend("sync", { featureId, flagKey: next.flagKey, environment: env, rollout, summary });
+  // 실제 Unleash Admin API 가 제약을 적용하도록 flagKey + constraints + stickiness 동봉.
+  pushBackend("sync", { featureId, flagKey: next.flagKey, environment: env, rollout, summary, constraints, stickiness: "vin" });
 }
 
 export function setFlagEnabled(featureId: string, env: FlagEnv, on: boolean, actor: string) {
   const s = getFlagState(featureId);
   persist({ ...s, envs: { ...s.envs, [env]: { ...s.envs[env], enabled: on } } });
   store.audit({ actor, action: on ? "FLAG_ENABLE" : "FLAG_KILL", objectType: "FeatureFlag", objectId: s.flagKey, after: `${env}:${on ? "on" : "off"}` });
-  pushBackend(`${featureId}/toggle`, { environment: env, enabled: on });
+  // toggle 라우트는 body.flagKey 를 사용 → 반드시 동봉.
+  pushBackend(`${featureId}/toggle`, { flagKey: s.flagKey, environment: env, enabled: on });
 }
 
+/** rollout 변경은 store(낙관적)에만 반영. 실제 Unleash 반영은 Sync 시 일괄 push(별도 rollout 라우트 없음). */
 export function setFlagRollout(featureId: string, env: FlagEnv, rollout: number) {
   const s = getFlagState(featureId);
   persist({ ...s, envs: { ...s.envs, [env]: { ...s.envs[env], rollout } } });
-  pushBackend(`${featureId}/rollout`, { environment: env, rollout });
 }
 
 /** 드리프트: 현재 룰 요약(desired) vs 마지막 동기화된 요약(actual). 미동기화면 null. */
