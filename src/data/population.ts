@@ -202,6 +202,32 @@ export function ruleToPolicyExpression(rule: EligibilityRule): string {
   return parts.length ? parts.join(" && ") : "true  /* 전체 차량 (조건 없음) */";
 }
 
+// ── Unleash 매핑 (안 A) — EligibilityRule → flexibleRollout 전략 + constraints ──
+export interface UnleashConstraint {
+  contextName: string;
+  operator: string;
+  values: string[];
+}
+export interface UnleashStrategy {
+  name: "flexibleRollout";
+  rollout: number; // 0~100
+  stickiness: "vin";
+  groupId: string;
+  constraints: UnleashConstraint[];
+}
+export function ruleToUnleash(rule: EligibilityRule, opts: { flagKey: string; rollout: number }): { flagKey: string; strategy: UnleashStrategy; summary: string } {
+  const c: UnleashConstraint[] = [];
+  if (rule.regions.length) c.push({ contextName: "region", operator: "IN", values: [...rule.regions] });
+  if (rule.trims.length) c.push({ contextName: "trim", operator: "IN", values: [...rule.trims] });
+  if (rule.hwVersions.length) c.push({ contextName: "hwVersion", operator: "IN", values: [...rule.hwVersions] });
+  if (rule.requireSw3) c.push({ contextName: "swVersion", operator: "SEMVER_GTE", values: ["3.0.0"] });
+  if (rule.minModelYear2024) c.push({ contextName: "modelYear", operator: "NUM_GTE", values: ["2024"] });
+  if (rule.optionCodes.length) c.push({ contextName: "option", operator: "IN", values: [...rule.optionCodes] });
+  if (rule.requireEntitlement) c.push({ contextName: "entitled", operator: "IN", values: ["true"] });
+  if (rule.requireConnectivity) c.push({ contextName: "connected", operator: "IN", values: ["true"] });
+  return { flagKey: opts.flagKey, strategy: { name: "flexibleRollout", rollout: opts.rollout, stickiness: "vin", groupId: opts.flagKey, constraints: c }, summary: ruleToPolicyExpression(rule) };
+}
+
 export interface VinCheck {
   label: string;
   required: boolean;

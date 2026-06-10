@@ -25,6 +25,7 @@ import { KpiCommandPage } from "./KpiCommandPage";
 import { GoLiveDecisionPage } from "./GoLiveDecisionPage";
 import { TargetingPage } from "./TargetingPage";
 import { MultiRolloutPage } from "./MultiRolloutPage";
+import { FlagConsolePage } from "./FlagConsolePage";
 import {
   ProductScopePage,
   RequirementsPage,
@@ -87,6 +88,7 @@ const PAGES: [string, () => React.JSX.Element, string][] = [
   ["OpsControl", OpsControlPage, "Operations Control Pack"],
   ["Targeting", TargetingPage, "Feature Targeting & Eligibility"],
   ["MultiRollout", MultiRolloutPage, "Multi-Feature Rollout Board"],
+  ["FlagConsole", FlagConsolePage, "Feature Flag 콘솔"],
 ];
 
 describe("모든 페이지 렌더 스모크", () => {

@@ -227,6 +227,20 @@ export interface ReleaseCandidateRecord {
   status: "DRAFT" | "FROZEN" | "DEPLOYED" | "ROLLED_BACK";
 }
 
+// ── Phase 3: Unleash Feature Flag 상태(플랫폼 SoR의 "원하는/동기화된" 상태) ──
+export type FlagEnv = "dev" | "qa" | "prod";
+export interface FlagEnvState {
+  enabled: boolean;
+  rollout: number; // 0~100
+}
+export interface FlagStateRecord {
+  id: string; // = featureId
+  flagKey: string; // unleash flag key
+  envs: Record<FlagEnv, FlagEnvState>;
+  constraintsSummary: string; // 마지막 동기화된 constraints 요약
+  lastSyncAt?: string;
+}
+
 export interface AuditLog {
   id: string;
   actor: string;

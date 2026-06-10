@@ -53,6 +53,7 @@ const FleetControlPage = lazy(() => named(import("./pages/FleetControlPage"), "F
 const KpiCommandPage = lazy(() => named(import("./pages/KpiCommandPage"), "KpiCommandPage"));
 const GoLiveDecisionPage = lazy(() => named(import("./pages/GoLiveDecisionPage"), "GoLiveDecisionPage"));
 const TargetingPage = lazy(() => named(import("./pages/TargetingPage"), "TargetingPage"));
+const FlagConsolePage = lazy(() => named(import("./pages/FlagConsolePage"), "FlagConsolePage"));
 const MultiRolloutPage = lazy(() => named(import("./pages/MultiRolloutPage"), "MultiRolloutPage"));
 const ProductScopePage = lazy(() => named(import("./pages/workbenches"), "ProductScopePage"));
 const RequirementsPage = lazy(() => named(import("./pages/workbenches"), "RequirementsPage"));
@@ -134,6 +135,7 @@ function Gate() {
                   <Route path="product" element={<ProductScopePage />} />
                   <Route path="requirements" element={<RequirementsPage />} />
                   <Route path="targeting" element={<TargetingPage />} />
+                  <Route path="flags" element={<FlagConsolePage />} />
                   <Route path="safety" element={<SafetySecurityPage />} />
                   <Route path="sw-api" element={<SwApiPage />} />
                   <Route path="control" element={<ControlRuntimePage />} />

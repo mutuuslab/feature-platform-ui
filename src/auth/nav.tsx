@@ -73,6 +73,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: "/product", label: "Product & Scope", icon: <DollarOutlined />, roles: ["ProductOwner", "PMO", "Admin"] },
       { key: "/requirements", label: "Requirements & System", icon: <ApartmentOutlined />, roles: ["SystemOwner", "PMO", "Admin"] },
       { key: "/targeting", label: "Feature Targeting & Eligibility", icon: <AimOutlined />, roles: ["SystemOwner", "ProductOwner", "ReleaseOwner", "OperationOwner", "PMO", "Admin"] },
+      { key: "/flags", label: "Feature Flags (Unleash)", icon: <RadarChartOutlined />, roles: ["SystemOwner", "ReleaseOwner", "OperationOwner", "PMO", "Admin"] },
       { key: "/safety", label: "Safety & Security", icon: <SafetyCertificateOutlined />, roles: ["SystemOwner", "Quality", "PMO", "Admin"] },
       { key: "/sw-api", label: "SW & API", icon: <DeploymentUnitOutlined />, roles: ["SWOwner", "SystemOwner", "PMO", "Admin"] },
       { key: "/control", label: "Control & Runtime", icon: <ControlOutlined />, roles: ["SystemOwner", "ReleaseOwner", "PMO", "Admin"] },

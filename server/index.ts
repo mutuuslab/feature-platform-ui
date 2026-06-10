@@ -7,6 +7,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildServerDb, type ResourceName } from "./seed.js";
 import { openapi } from "./openapi.js";
 import { AI_TASKS, type AiTaskKey } from "./ai.js";
+import { unleashEnabled, syncFlag as unleashSync, toggleFlag, getFlag, flagMetrics } from "./unleash.js";
 
 const PORT = Number(process.env.PORT) || 9100; // 포트 8000 금지 규칙
 const app = express();
@@ -45,7 +46,7 @@ const genId = (r: string) => `${r.slice(0, 3).toUpperCase()}-${(seq += 1)}`;
 const audit = (entry: Record<string, unknown>) =>
   db.auditLogs.unshift({ id: genId("AU"), timestamp: new Date().toISOString(), ...entry } as never);
 
-const GATES = ["RG1", "RG2", "RG3", "RG4", "RG5", "RG6", "RG7", "RG8", "RG9"];
+const GATES = ["RG1", "RG2", "RG3", "RG4", "RG5", "RG6", "RG7", "RG8", "RG9"] as const;
 function gateSummary(featureId: string) {
   const gs = db.gates.filter((g) => g.featureId === featureId);
   const by = new Map(gs.map((g) => [g.gateCode, g.status]));
@@ -141,20 +142,54 @@ app.post("/api/ai/:task", async (req: Request, res: Response) => {
   if (!anthropic)
     return res.status(503).json({ error: "ANTHROPIC_API_KEY 미설정 — 백엔드 AI 비활성. 프런트는 Mock으로 동작합니다." });
   try {
-    const msg = await anthropic.messages.create({
+    // adaptive thinking + output_config 는 런타임 API 지원(설치 SDK 타입 lag) → any로 전달.
+    const body: any = {
       model: "claude-opus-4-8",
       max_tokens: 2048,
       thinking: { type: "adaptive" },
       system: cfg.system,
       messages: [{ role: "user", content: cfg.user(req.body ?? {}) }],
       output_config: { format: { type: "json_schema", schema: cfg.schema } },
-    });
+    };
+    const msg = await anthropic.messages.create(body);
     const text = msg.content.find((b): b is Anthropic.TextBlock => b.type === "text")?.text ?? "{}";
     res.json(JSON.parse(text));
   } catch (e) {
     console.error("AI error", e);
     res.status(500).json({ error: (e as Error).message });
   }
+});
+
+// ── Unleash Feature Flag (안 A · headless 어댑터) ──
+// 프런트(src/data/flagProvider.ts)가 USE_BACKEND 시 호출. 미설정 시 503 → 프런트 Mock.
+const flagGuard = (res: Response) => res.status(503).json({ error: "UNLEASH_URL/UNLEASH_ADMIN_TOKEN 미설정 — 프런트는 Mock 으로 동작합니다." });
+
+app.post("/api/flags/sync", async (req: Request, res: Response) => {
+  if (!unleashEnabled) return flagGuard(res);
+  try {
+    const { flagKey, environment, rollout, constraints } = req.body ?? {};
+    const r = await unleashSync({ flagKey, environment, rollout: Number(rollout) || 0, constraints: constraints ?? [] });
+    audit({ actor: "api", action: "FLAG_SYNC", objectType: "FeatureFlag", objectId: flagKey, after: `${environment} ${rollout}%` });
+    res.json(r);
+  } catch (e) { res.status(502).json({ error: (e as Error).message }); }
+});
+
+app.post("/api/flags/:feature/toggle", async (req: Request, res: Response) => {
+  if (!unleashEnabled) return flagGuard(res);
+  try {
+    const { flagKey, environment, enabled } = req.body ?? {};
+    res.json(await toggleFlag(flagKey, environment, Boolean(enabled)));
+  } catch (e) { res.status(502).json({ error: (e as Error).message }); }
+});
+
+app.get("/api/flags/:flagKey", async (req: Request, res: Response) => {
+  if (!unleashEnabled) return flagGuard(res);
+  try { res.json(await getFlag(req.params.flagKey)); } catch (e) { res.status(502).json({ error: (e as Error).message }); }
+});
+
+app.get("/api/flags/:flagKey/metrics", async (req: Request, res: Response) => {
+  if (!unleashEnabled) return flagGuard(res);
+  try { res.json(await flagMetrics(req.params.flagKey)); } catch (e) { res.status(502).json({ error: (e as Error).message }); }
 });
 
 // ── Generic CRUD (Refine simple-rest 호환) ──
@@ -211,5 +246,6 @@ app.listen(PORT, () => {
   console.log(`  Swagger UI: http://localhost:${PORT}/docs`);
   console.log(`  Bootstrap : http://localhost:${PORT}/api/bootstrap`);
   console.log(`  AI(/api/ai): ${anthropic ? "ENABLED (claude-opus-4-8)" : "DISABLED — ANTHROPIC_API_KEY 미설정 → 503"}`);
+  console.log(`  Flags(/api/flags): ${unleashEnabled ? "ENABLED (Unleash Admin API)" : "DISABLED — UNLEASH_URL/TOKEN 미설정 → 503"}`);
   console.log(`  CORS origin: ${ORIGINS.includes("*") ? "* (전체 허용)" : ORIGINS.join(", ")} · AI rate: ${AI_RATE_PER_MIN}/min`);
 });

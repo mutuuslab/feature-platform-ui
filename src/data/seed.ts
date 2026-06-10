@@ -3,6 +3,7 @@ import type {
   AuditLog,
   DefectRecord,
   Evidence,
+  FlagStateRecord,
   Feature,
   FeatureRequest,
   Gate,
@@ -49,6 +50,7 @@ export interface SeedData {
   tests: TestRunRecord[];
   defects: DefectRecord[];
   releaseCandidates: ReleaseCandidateRecord[];
+  flagStates: FlagStateRecord[];
 }
 
 export function buildSeed(): SeedData {
@@ -218,5 +220,11 @@ export function buildSeed(): SeedData {
     { id: "RC-2026-10", name: "October Draft", featureIds: ["FEAT-VFC-004"], swBaseline: "SWB-26.10", targetEnv: "dev", status: "DRAFT" },
   ];
 
-  return { features, featureRequests, gates, evidence, supplierWorkPackages, releasePlans, auditLogs, vehicles: buildVehicles(), eligibilityRules: [], eligibilityHistory: [], activations: [], fieldIssues: [], requirements, tests, defects, releaseCandidates };
+  const off = { enabled: false, rollout: 0 };
+  const flagStates: FlagStateRecord[] = [
+    { id: "FEAT-DST-003", flagKey: "feature_dst_003", envs: { dev: { enabled: true, rollout: 100 }, qa: { enabled: true, rollout: 100 }, prod: { enabled: true, rollout: 100 } }, constraintsSummary: "trim ∈ {Sport}", lastSyncAt: now },
+    { id: "FEAT-ALK-002", flagKey: "feature_alk_002", envs: { dev: { enabled: true, rollout: 100 }, qa: { enabled: true, rollout: 50 }, prod: off }, constraintsSummary: "region ∈ {US, KR}", lastSyncAt: now },
+  ];
+
+  return { features, featureRequests, gates, evidence, supplierWorkPackages, releasePlans, auditLogs, vehicles: buildVehicles(), eligibilityRules: [], eligibilityHistory: [], activations: [], fieldIssues: [], requirements, tests, defects, releaseCandidates, flagStates };
 }
